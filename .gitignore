@@ -5,3 +5,13 @@ __pycache__/
 *.pyc
 ai-service/data/
 ai-service/models/
+
+node_modules/
+.pnpm-store/
+
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.tsbuildinfo
+.metro-health-check*

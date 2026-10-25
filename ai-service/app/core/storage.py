@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
+from urllib.parse import unquote, urlparse
 
 from minio import Minio
 from minio.error import S3Error
@@ -40,6 +41,14 @@ def is_minio_url(url: str | None) -> bool:
     if not url:
         return False
     return MINIO_BUCKET in url and MINIO_ENDPOINT.split(":")[0] in url
+
+
+def object_key_from_url(url: str) -> str | None:
+    path = unquote(urlparse(url).path).lstrip("/")
+    prefix = f"{MINIO_BUCKET}/"
+    if path.startswith(prefix):
+        return path[len(prefix) :]
+    return None
 
 
 def find_existing_object(source: str, source_id: str) -> str | None:

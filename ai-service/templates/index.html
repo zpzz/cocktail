@@ -58,7 +58,7 @@
         <span class="sub">会识别「查库」还是「定制特调」；现成配方带库图，定制会参考知识库再生图</span>
       </div>
       <div class="chat-log" id="chatLog">
-        <div class="chat-msg assistant">可以说「莫吉托怎么做」查库，或「帮我定制一杯朗姆特调」。定制时做法不清我会先问基酒和调制方式。</div>
+        <div class="chat-msg assistant">可以说「莫吉托怎么做」查库，「推荐两杯利口酒」，或「帮我定制一杯朗姆特调」。闲聊也可以，比如「你是谁」。</div>
       </div>
       <form class="chat-form" id="chatForm">
         <input id="chatInput" type="text" autocomplete="off" placeholder="输入问题，Enter 发送">
@@ -299,7 +299,7 @@
       const bot = appendChat("assistant", "正在检索配方…");
       el("chatSend").disabled = true;
       try {
-        const res = await fetch("/api/chat/stream", {
+        const res = await fetch("/api/ai/chat/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ session_id: chatSessionId(), message }),
@@ -321,7 +321,8 @@
         };
         await readSse(res, (payload) => {
           if (payload.type === "intent") {
-            if (payload.mode === "customize") bot.textContent = "按你的口味定制特调…";
+            if (payload.mode === "customize" || payload.value === "customize") bot.textContent = "按你的口味定制特调…";
+            else if (payload.mode === "chitchat" || payload.value === "chitchat") bot.textContent = "随便聊聊…";
             else if (payload.value === "library") bot.textContent = "正在对照配方库…";
           } else if (payload.type === "mode" && payload.value === "clarify") {
             bot.textContent = "想先确认基酒和做法…";

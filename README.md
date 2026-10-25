@@ -192,6 +192,10 @@ SSE：`intent` / `mode` / `sources` / `images` / `token` / `image_loading` / `im
 
 ```text
 cocktails/
+├── frontend/                   前端 pnpm monorepo（与 Python 服务分离）
+│   ├── apps/app-rn/            Expo + React Native APP（首页 / 工作台 / 酒柜 / 我的）
+│   ├── packages/shared/        零平台依赖：类型、API 路径、HttpClient、Redux
+│   └── pnpm-workspace.yaml
 ├── docker-compose.yml          Postgres(pgvector) + MinIO
 ├── docker/postgres/init.sql    CREATE EXTENSION vector
 ├── .env.example
@@ -290,6 +294,44 @@ HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_XET=1 \
 | `EMBEDDING_MODEL` | 相对 `ai-service/` 的本地目录，如 `models/bge-m3` |
 
 定制生图依赖百炼账号可用（欠费时即使还有免费额度也会被拒绝）。免费额度只对华北 2（北京）生效。
+
+---
+
+## APP（Expo + React Native）
+
+前端是独立的 pnpm workspace，根在 `frontend/`，不和 `ai-service` 混依赖。`apps/app-rn` 只放 RN UI，业务类型 / HTTP 抽象 / Redux 在 `packages/shared`。当前用 **Expo SDK 58 + React Native 0.88**，开发调试走 Expo。
+
+### 启动
+
+需要 Node ≥ 22.11、pnpm。
+
+```bash
+cd /path/to/cocktails/frontend
+pnpm install
+pnpm app            # 等价于 expo start，终端会出二维码
+```
+
+或：
+
+```bash
+pnpm app:ios        # macOS + Xcode，开 iOS 模拟器
+pnpm app:android    # 需 Android Studio / 模拟器
+pnpm app:web        # 浏览器预览（仅开发，不是产品形态）
+```
+
+### 怎么调试
+
+1. **真机最快：Expo Go**  
+   iOS App Store / Android 装 [Expo Go](https://expo.dev/go)。电脑和手机同一 Wi-Fi，扫 `pnpm app` 的二维码即可。改 JS 保存后热更新。  
+   iOS 模拟器也可用：`pnpm app:ios`（需 Xcode）。
+
+2. **Chrome / Cursor 调试 JS**  
+   Metro 启动后按 `j` 打开 React Native DevTools，可断点、看组件树。摇一摇设备（模拟器 `Cmd+D` / Android `Cmd+M`）打开开发菜单。
+
+3. **什么时候不要用 Expo Go**  
+   接入摄像头、本地构建原生模块、或要打 TestFlight / 商店包时，再执行 `npx expo prebuild` 生成 `ios/`、`android/`，用 `npx expo run:ios` / `run:android`。MVP 骨架阶段不需要这一步。
+
+真机访问本机 Java/Python API 时，不要用 `localhost`，用电脑局域网 IP（例如 `http://192.168.x.x:8000`）。
 
 ---
 

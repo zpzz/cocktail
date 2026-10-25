@@ -1,0 +1,6 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# React Native 生态对 isolated node_modules 仍有个别库不兼容，MVP 用 hoisted。
+nodeLinker: hoisted

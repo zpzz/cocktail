@@ -1,16 +1,16 @@
 """LangGraph 对话图。
 
 节点：
-    classify      调 intent.classify_intent，写出 mode / slots
+    classify      调 intent.classify_intent（DeepSeek JSON）：library / customize / chitchat / clarify
     clarify       不检索，只把 mode 设成 clarify
-    retrieve      BGE-M3 + pgvector；customize 时 hits 当参考，library 时带现成图
-    generate      DeepSeek 流式：反问 / 照库回答 / 写新特调
+    retrieve      BGE-M3 + pgvector；customize 时 hits 当参考
+    generate      DeepSeek 流式：闲聊 / 反问 / 照库回答 / 写新特调
     render_image  仅 customize：qwen-image 生图 → MinIO
 
 边：
-    START → classify → (clarify | retrieve) → generate
+    START → classify → (chitchat: generate | clarify | retrieve → generate)
     generate → render_image → END   仅定制且不是反问
-    generate → END                  查库或反问
+    generate → END                  查库、闲聊或反问
 """
 
 from __future__ import annotations
@@ -34,11 +34,18 @@ LIBRARY_SCORE = 0.55  # 1 - cosine_distance，达到这个或名称命中才算�
 
 LIBRARY_PROMPT = """你是鸡尾酒知识库助手，只推荐知识库里已经有的酒，绝对不是特调师。
 硬性规则：
-- 必须根据「检索到的配方」点名 1～2 杯，写出酒名、酒精度、一句理由；用户要做法时再写材料步骤。
+- 必须根据「检索到的配方」点名用户要的杯数（见 want_count）。有足够结果时点名不同的酒，写出酒名、酒精度、一句理由；用户要做法时再写材料步骤。
+- 酒名必须与检索结果中的中文名一致，便于配图。
 - 禁止提问。回答里不要出现问号。
 - 禁止说「定制特调」、禁止发明新酒名或改配比。
 - 用户说推荐、度数高、都行、没有、随便：直接给酒，不要解释还缺信息。
-- 用户打招呼：问好后立刻推荐检索里的一杯库内酒。
+- 用中文。"""
+
+CHITCHAT_PROMPT = """你是鸡尾酒助手，这轮用户在闲聊，不是查配方也不是定制。
+规则：
+- 用简短自然的中文回复。可以自我介绍：会查库内鸡尾酒、也能按口味定制特调。
+- 不要编造完整配方，不要假装刚检索了知识库，不要生图。
+- 可以轻轻把话题引到喝酒，但不要硬推酒单或问卷。
 - 用中文。"""
 
 CUSTOM_PROMPT = """你是鸡尾酒特调师。仅当用户明确要求定制/特调时才用本提示。
@@ -61,10 +68,11 @@ class ChatState(TypedDict, total=False):
     messages: list[BaseMessage]  # 进入本轮前的历史
     hits: list[dict[str, Any]]  # 检索命中摘要（给 SSE sources）
     context: str  # 拼好的配方全文，塞进 generate 的 prompt
-    intent: Literal["library", "customize", "clarify"]  # 语义意图，反问时仍可能是 customize
+    intent: Literal["library", "customize", "clarify", "chitchat"]
     need_clarify: bool
-    mode: Literal["clarify", "library", "customize"]  # 实际走哪条边
+    mode: Literal["clarify", "library", "customize", "chitchat"]
     confident_match: bool  # library 是否高置信命中
+    want_count: int  # 用户要几杯，查库配图按这个数
     answer: str
     image_url: str
     image_error: str
@@ -113,6 +121,37 @@ def _name_match(query: str, recipe) -> bool:
     return any(name and name.lower() in blob for name in names)
 
 
+def library_images(hits: list[dict[str, Any]], answer: str, want_count: int) -> list[dict[str, Any]]:
+    """按回答里点到的酒名配图；点不够再按检索顺序补到 want_count。"""
+    n = max(1, min(int(want_count or 2), 4))
+    blob = (answer or "").lower()
+    picked: list[dict[str, Any]] = []
+    seen: set[Any] = set()
+
+    def take(row: dict[str, Any]) -> None:
+        rid = row.get("id")
+        if rid in seen or not row.get("image_url"):
+            return
+        seen.add(rid)
+        picked.append(row)
+
+    for row in hits:
+        names = [row.get("name") or "", row.get("name_en") or ""]
+        if any(name and name.lower() in blob for name in names):
+            take(row)
+        if len(picked) >= n:
+            break
+    if len(picked) < n:
+        for row in hits:
+            take(row)
+            if len(picked) >= n:
+                break
+    return [
+        {"url": row["image_url"], "alt": row.get("name") or "", "recipe_id": row.get("id")}
+        for row in picked
+    ]
+
+
 def _llm(temperature: float = 0.4) -> ChatOpenAI:
     if not DEEPSEEK_API_KEY:
         raise RuntimeError("未配置 DEEPSEEK_API_KEY")
@@ -139,17 +178,13 @@ async def classify(state: ChatState) -> dict[str, Any]:
     intent = result["intent"]
     mode = result["mode"]
     search_query = result.get("search_query") or state["query"]
-    q = (state["query"] or "").strip()
-    if q in {"你好", "您好", "hi", "hello", "嗨"} and mode != "customize":
-        search_query = "经典 流行 鸡尾酒 莫吉托"
-        mode = "library"
-        intent = "library"
-        result["need_clarify"] = False
+    want_count = int(result.get("want_count") or 1)
     return {
-        "intent": intent if intent in {"library", "customize", "clarify"} else "library",
+        "intent": intent if intent in {"library", "customize", "clarify", "chitchat"} else "library",
         "need_clarify": bool(result.get("need_clarify")) and mode == "clarify",
-        "mode": mode if mode in {"library", "customize", "clarify"} else "library",
+        "mode": mode if mode in {"library", "customize", "clarify", "chitchat"} else "library",
         "search_query": search_query,
+        "want_count": want_count,
         "slots": result.get("slots") or {},
         "hits": [],
         "context": "",
@@ -161,8 +196,12 @@ async def classify(state: ChatState) -> dict[str, Any]:
     }
 
 
-def route_after_classify(state: ChatState) -> Literal["clarify", "retrieve"]:
-    return "clarify" if state.get("need_clarify") or state.get("mode") == "clarify" else "retrieve"
+def route_after_classify(state: ChatState) -> Literal["clarify", "retrieve", "generate"]:
+    if state.get("need_clarify") or state.get("mode") == "clarify":
+        return "clarify"
+    if state.get("intent") == "chitchat" or state.get("mode") == "chitchat":
+        return "generate"
+    return "retrieve"
 
 
 def clarify(state: ChatState) -> dict[str, Any]:
@@ -176,7 +215,7 @@ def clarify(state: ChatState) -> dict[str, Any]:
 
 
 def retrieve(state: ChatState) -> dict[str, Any]:
-    """查库。customize 不把库内图当「成品图」；library 高置信则带 MinIO URL。"""
+    """查库。customize 不带库内成品图；library 的配图在回答生成后再按酒名匹配。"""
     db = SessionLocal()
     try:
         query = state.get("search_query") or state["query"]
@@ -191,23 +230,20 @@ def retrieve(state: ChatState) -> dict[str, Any]:
         confident = bool(top) and (named or (top["score"] >= LIBRARY_SCORE))
         intent = state.get("intent") or "library"
         # 即使用户描述很像莫吉托，只要意图是定制就不走「直接返回库内」
+        want_count = max(1, min(int(state.get("want_count") or (1 if named else 2)), 4))
         if intent == "customize":
-            mode: Literal["library", "customize", "clarify"] = "customize"
+            mode: Literal["library", "customize", "clarify", "chitchat"] = "customize"
             confident = False
             images: list[dict[str, Any]] = []
         else:
             mode = "library"
-            shown = hits[:1] if named or confident else hits[:2]
-            images = [
-                {"url": row["image_url"], "alt": row["name"], "recipe_id": row["id"]}
-                for row in shown
-                if row.get("image_url")
-            ]
+            images = []
         return {
             "hits": hits,
             "context": "\n\n".join(blocks) if blocks else "（没有检索到配方）",
             "confident_match": confident,
             "mode": mode,
+            "want_count": want_count,
             "images": images,
         }
     finally:
@@ -218,7 +254,10 @@ async def generate(state: ChatState) -> dict[str, Any]:
     """按 mode 换 system prompt。token 由 stream_chat 监听 on_chat_model_stream 往外推。"""
     mode = state.get("mode") or "library"
     intent = state.get("intent") or "library"
-    if mode == "clarify":
+    if mode == "chitchat" or intent == "chitchat":
+        system = CHITCHAT_PROMPT
+        user = f"用户说：{state['query']}"
+    elif mode == "clarify":
         system = CLARIFY_CUSTOM_PROMPT if intent == "customize" else CLARIFY_LIBRARY_PROMPT
         slots = state.get("slots") or {}
         missing = [name for key, name in (("base_spirit", "基酒"), ("flavor", "口味"), ("method", "调制方式")) if not slots.get(key)]
@@ -236,11 +275,13 @@ async def generate(state: ChatState) -> dict[str, Any]:
         )
     else:
         system = LIBRARY_PROMPT
+        want_count = max(1, min(int(state.get("want_count") or 2), 4))
         user = (
             f"用户问题：{state['query']}\n"
+            f"本轮要点名 {want_count} 杯库内酒（检索结果不够就有几杯写几杯）。\n"
             f"是否有高置信匹配：{bool(state.get('confident_match'))}\n\n"
             f"检索到的配方：\n{state.get('context') or '（没有检索到配方）'}\n\n"
-            "本轮禁止提问，必须从上面检索结果里点名推荐。"
+            "本轮禁止提问，必须从上面检索结果里点名推荐，酒名用检索里的中文名。"
         )
     prompt = [
         SystemMessage(content=system),
@@ -284,7 +325,7 @@ def build_graph():
     workflow.add_conditional_edges(
         "classify",
         route_after_classify,
-        {"clarify": "clarify", "retrieve": "retrieve"},
+        {"clarify": "clarify", "retrieve": "retrieve", "generate": "generate"},
     )
     workflow.add_edge("clarify", "generate")
     workflow.add_edge("retrieve", "generate")
@@ -337,6 +378,7 @@ async def stream_chat(session_id: str, query: str) -> AsyncIterator[dict[str, An
         "need_clarify": False,
         "mode": "library",
         "confident_match": False,
+        "want_count": 1,
         "answer": "",
         "image_url": "",
         "image_error": "",
@@ -346,6 +388,8 @@ async def stream_chat(session_id: str, query: str) -> AsyncIterator[dict[str, An
     tokens: list[str] = []
     intent = "library"
     mode = "library"
+    hits: list[dict[str, Any]] = []
+    want_count = 1
     try:
         async for event in get_graph().astream_events(payload, version="v2"):
             kind = event.get("event")
@@ -355,18 +399,27 @@ async def stream_chat(session_id: str, query: str) -> AsyncIterator[dict[str, An
             if kind == "on_chain_end" and node == "classify" and isinstance(output, dict):
                 intent = output.get("intent") or intent
                 mode = output.get("mode") or mode
+                want_count = int(output.get("want_count") or want_count)
                 yield {"type": "intent", "value": intent, "mode": mode}
                 if output.get("need_clarify"):
                     yield {"type": "mode", "value": "clarify"}
             elif kind == "on_chain_end" and node == "retrieve" and isinstance(output, dict):
                 mode = output.get("mode") or mode
+                hits = output.get("hits") or []
+                want_count = int(output.get("want_count") or want_count)
                 role = "reference" if mode == "customize" else "library"
-                yield {"type": "sources", "role": role, "items": output.get("hits") or []}
-                images = output.get("images") or []
-                if images:
-                    yield {"type": "images", "items": images}
-            elif kind == "on_chain_end" and node == "generate" and mode == "customize":
-                yield {"type": "image_loading", "text": "正在生成特调配图…"}
+                yield {"type": "sources", "role": role, "items": hits}
+            elif kind == "on_chain_end" and node == "generate" and isinstance(output, dict):
+                if mode == "library":
+                    images = library_images(
+                        hits,
+                        "".join(tokens) or str(output.get("answer") or ""),
+                        want_count,
+                    )
+                    if images:
+                        yield {"type": "images", "items": images}
+                elif mode == "customize":
+                    yield {"type": "image_loading", "text": "正在生成特调配图…"}
             elif kind == "on_chain_start" and node == "render_image":
                 yield {"type": "image_loading", "text": "正在生成特调配图…"}
             elif kind == "on_chain_end" and node == "render_image" and isinstance(output, dict):

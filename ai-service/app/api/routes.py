@@ -6,14 +6,15 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from minio.error import S3Error
 from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.excel_export import build_recipes_workbook
-from app.config import DEEPSEEK_API_KEY
+from app.config import MINIO_BUCKET
 from app.core.database import Recipe, RecipeChunk, get_db
-from app.rag.graph import stream_chat
+from app.core.storage import minio_client
 from app.rag.retriever import search_recipes
 from app.rag.scheduler import embed_manager
 from crawler.scheduler import manager
@@ -27,11 +28,6 @@ class CrawlRequest(BaseModel):
 
 class EmbedRequest(BaseModel):
     force: bool = False
-
-
-class ChatRequest(BaseModel):
-    session_id: str
-    message: str
 
 
 def _recipe_to_dict(recipe: Recipe) -> dict:
@@ -68,6 +64,35 @@ def _recipe_to_dict(recipe: Recipe) -> dict:
             for item in recipe.ingredients
         ],
     }
+
+
+@router.get("/media/{object_path:path}")
+def get_media(object_path: str):
+    """把 MinIO 对象转成同源 URL，方便 Expo 真机/Web 加载图片。"""
+    key = object_path.lstrip("/")
+    prefix = f"{MINIO_BUCKET}/"
+    if key.startswith(prefix):
+        key = key[len(prefix) :]
+    if not key or ".." in key.split("/"):
+        raise HTTPException(status_code=404, detail="图片不存在")
+    try:
+        obj = minio_client().get_object(MINIO_BUCKET, key)
+    except S3Error as exc:
+        raise HTTPException(status_code=404, detail="图片不存在") from exc
+    content_type = obj.headers.get("Content-Type", "application/octet-stream")
+
+    def chunks():
+        try:
+            yield from obj.stream(32 * 1024)
+        finally:
+            obj.close()
+            obj.release_conn()
+
+    return StreamingResponse(
+        chunks(),
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.get("/stats")
@@ -138,27 +163,6 @@ def start_embed(payload: EmbedRequest):
 @router.get("/rag/embed/status")
 def embed_status():
     return embed_manager.snapshot()
-
-
-@router.post("/chat/stream")
-async def chat_stream(payload: ChatRequest):
-    """SSE 对话：意图 → 检索或反问 → 流式 token → 库内图或定制生图。"""
-    if not DEEPSEEK_API_KEY:
-        raise HTTPException(status_code=500, detail="未配置 DEEPSEEK_API_KEY")
-    message = payload.message.strip()
-    if not message:
-        raise HTTPException(status_code=400, detail="请输入问题")
-    session_id = payload.session_id.strip() or "default"
-
-    async def events():
-        async for event in stream_chat(session_id, message):
-            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-
-    return StreamingResponse(
-        events(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
 
 
 @router.get("/rag/search")

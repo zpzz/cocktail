@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from urllib.parse import unquote, urlparse
 
 import httpx
 from openpyxl import Workbook
@@ -17,7 +16,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import MINIO_BUCKET
 from app.core.database import Recipe
-from app.core.storage import is_minio_url, minio_client
+from app.core.storage import is_minio_url, minio_client, object_key_from_url
 
 THUMB_PX = 96
 HEADERS = [
@@ -50,20 +49,12 @@ def _ingredient_text(recipe: Recipe) -> str:
     return "；".join(parts)
 
 
-def _object_key_from_url(url: str) -> str | None:
-    path = unquote(urlparse(url).path).lstrip("/")
-    prefix = f"{MINIO_BUCKET}/"
-    if path.startswith(prefix):
-        return path[len(prefix) :]
-    return None
-
-
 def _load_image_bytes(url: str) -> bytes | None:
     if not url:
         return None
     try:
         if is_minio_url(url):
-            key = _object_key_from_url(url)
+            key = object_key_from_url(url)
             if key:
                 response = minio_client().get_object(MINIO_BUCKET, key)
                 try:

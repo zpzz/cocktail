@@ -1,0 +1,12 @@
+{
+  "name": "cocktail-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "app": "pnpm --filter @cocktail/app-rn start",
+    "app:ios": "pnpm --filter @cocktail/app-rn ios",
+    "app:android": "pnpm --filter @cocktail/app-rn android",
+    "app:web": "pnpm --filter @cocktail/app-rn web"
+  }
+}
