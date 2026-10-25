@@ -44,3 +44,24 @@ MINIO_PUBLIC_BASE = os.getenv(
     "MINIO_PUBLIC_BASE",
     f"{'https' if MINIO_SECURE else 'http'}://{MINIO_ENDPOINT}",
 )
+
+# BGE-M3：local 本机加载；api 走 OpenAI 兼容 /embeddings
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "local")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1024"))
+EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "").rstrip("/")
+EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "")
+EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "8"))
+
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+
+# 定制特调生图：qwen-image-2.1-pro（DashScope 兼容接口）
+IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "qwen")
+IMAGE_API_KEY = os.getenv("IMAGE_API_KEY", "")
+IMAGE_BASE_URL = os.getenv(
+    "IMAGE_BASE_URL",
+    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+).rstrip("/")
+IMAGE_MODEL = os.getenv("IMAGE_MODEL", "qwen-image-2.1-pro")

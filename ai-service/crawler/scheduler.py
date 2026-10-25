@@ -112,6 +112,13 @@ class CrawlManager:
                 progress=run.message,
                 finished_at=run.finished_at.isoformat(),
             )
+            # 爬取成功后增量补向量（模型未就绪则任务自己报错）
+            try:
+                from app.rag.scheduler import embed_manager
+
+                embed_manager.start(force=False)
+            except RuntimeError:
+                pass
         except Exception as exc:  # noqa: BLE001
             db.rollback()
             run.status = "failed"

@@ -32,13 +32,38 @@
         </label>
         <input id="keyword" type="search" placeholder="搜索中英文名称">
         <button class="ghost" id="searchBtn" type="button">筛选</button>
+        <button class="ghost" id="exportBtn" type="button">导出全部 Excel</button>
       </div>
       <div class="stats">
         <span>库存合计 <b id="totalCount">0</b></span>
         <span>MixMyth <b id="mixmythCount">0</b></span>
         <span>CocktailDB <b id="cocktaildbCount">0</b></span>
+        <span>已向量化 <b id="chunkCount">0</b></span>
       </div>
       <div class="status" id="status">就绪</div>
+    </section>
+
+    <section class="panel">
+      <div class="row">
+        <button id="embedBtn" type="button">向量化入库</button>
+        <input id="ragQuery" type="search" placeholder="语义检索，例如：清爽的朗姆酒短饮">
+        <button class="ghost" id="ragSearchBtn" type="button">语义检索</button>
+      </div>
+      <div class="status" id="ragStatus">BGE-M3 · 每条配方一段 chunk</div>
+    </section>
+
+    <section class="panel chat-panel">
+      <div class="chat-head">
+        <strong>鸡尾酒助手</strong>
+        <span class="sub">会识别「查库」还是「定制特调」；现成配方带库图，定制会参考知识库再生图</span>
+      </div>
+      <div class="chat-log" id="chatLog">
+        <div class="chat-msg assistant">可以说「莫吉托怎么做」查库，或「帮我定制一杯朗姆特调」。定制时做法不清我会先问基酒和调制方式。</div>
+      </div>
+      <form class="chat-form" id="chatForm">
+        <input id="chatInput" type="text" autocomplete="off" placeholder="输入问题，Enter 发送">
+        <button id="chatSend" type="submit">发送</button>
+      </form>
     </section>
 
     <section class="grid" id="grid"></section>
@@ -54,11 +79,11 @@
   </dialog>
 
   <script>
-    // 页面只调四个接口：/api/stats、/api/recipes、/api/crawl、/api/crawl/status
     const pageSize = 24;
     let offset = 0;
     let total = 0;
     let timer = null;
+    let ragTimer = null;
 
     const el = (id) => document.getElementById(id);
 
@@ -74,6 +99,7 @@
       el("totalCount").textContent = data.total;
       el("mixmythCount").textContent = data.by_source.mixmyth || 0;
       el("cocktaildbCount").textContent = data.by_source.cocktaildb || 0;
+      el("chunkCount").textContent = data.chunks || 0;
     }
 
     async function loadRecipes() {
@@ -160,6 +186,197 @@
       }
     });
     el("searchBtn").addEventListener("click", async () => { offset = 0; await loadRecipes(); });
+    el("exportBtn").addEventListener("click", () => {
+      window.location.href = "/api/recipes/export.xlsx";
+    });
+
+    async function refreshEmbedStatus() {
+      const data = await fetchJSON("/api/rag/embed/status");
+      const box = el("ragStatus");
+      box.classList.toggle("error", Boolean(data.error));
+      box.textContent = data.running
+        ? `${data.progress} · ${data.upserted}/${data.total || "?"}`
+        : (data.error || data.progress || "BGE-M3 · 每条配方一段 chunk");
+      el("embedBtn").disabled = Boolean(data.running);
+      if (!data.running) {
+        clearInterval(ragTimer);
+        ragTimer = null;
+        await loadStats();
+      }
+    }
+
+    el("embedBtn").addEventListener("click", async () => {
+      try {
+        await fetchJSON("/api/rag/embed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: false }),
+        });
+        if (!ragTimer) ragTimer = setInterval(refreshEmbedStatus, 1000);
+        await refreshEmbedStatus();
+      } catch (err) {
+        el("ragStatus").textContent = err.message;
+        el("ragStatus").classList.add("error");
+      }
+    });
+
+    el("ragSearchBtn").addEventListener("click", async () => {
+      const q = el("ragQuery").value.trim();
+      if (!q) return;
+      const source = el("filterSource").value;
+      const params = new URLSearchParams({ q, k: "8" });
+      if (source) params.set("source", source);
+      const data = await fetchJSON("/api/rag/search?" + params.toString());
+      total = data.items.length;
+      offset = 0;
+      el("pageInfo").textContent = `语义 ${data.items.length} 条`;
+      el("grid").innerHTML = data.items.map((item) => `
+        <article class="card" data-id="${item.id}">
+          <img src="${item.image_url || ""}" alt="${item.name}" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+          <div class="body">
+            <span class="tag">${item.source}</span>
+            <span class="tag">相关 ${item.score}</span>
+            <h3>${item.name}</h3>
+            <div class="meta">${item.name_en || ""} · ${item.glass || "杯型未知"} · ${item.method_label || item.method}</div>
+          </div>
+        </article>
+      `).join("") || "<p class='sub'>没有检索到相关配方，请先向量化入库。</p>";
+      document.querySelectorAll(".card").forEach((card) => {
+        card.addEventListener("click", () => openDetail(card.dataset.id));
+      });
+    });
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function chatSessionId() {
+      const key = "cocktail-chat-session";
+      let id = localStorage.getItem(key);
+      if (!id) {
+        id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+        localStorage.setItem(key, id);
+      }
+      return id;
+    }
+
+    function appendChat(role, html, extraClass) {
+      const node = document.createElement("div");
+      node.className = `chat-msg ${role}${extraClass ? " " + extraClass : ""}`;
+      node.innerHTML = html;
+      el("chatLog").appendChild(node);
+      el("chatLog").scrollTop = el("chatLog").scrollHeight;
+      return node;
+    }
+
+    async function readSse(response, onEvent) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop();
+        for (const part of parts) {
+          const line = part.split("\n").find((row) => row.startsWith("data: "));
+          if (!line) continue;
+          onEvent(JSON.parse(line.slice(6)));
+        }
+      }
+    }
+
+    el("chatForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = el("chatInput").value.trim();
+      if (!message || el("chatSend").disabled) return;
+      el("chatInput").value = "";
+      appendChat("user", escapeHtml(message));
+      const bot = appendChat("assistant", "正在检索配方…");
+      el("chatSend").disabled = true;
+      try {
+        const res = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: chatSessionId(), message }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || "对话失败");
+        }
+        let answer = "";
+        let sourcesHtml = "";
+        let photosHtml = "";
+        const loadingHtml = `<div class="chat-photos custom"><div class="chat-photo-loading"><span class="spinner"></span><span>正在生成特调配图…</span></div></div>`;
+        const paint = () => {
+          bot.innerHTML = sourcesHtml + photosHtml + (answer ? escapeHtml(answer) : "");
+          bot.querySelectorAll("button[data-id]").forEach((btn) => {
+            btn.addEventListener("click", () => openDetail(btn.dataset.id));
+          });
+          el("chatLog").scrollTop = el("chatLog").scrollHeight;
+        };
+        await readSse(res, (payload) => {
+          if (payload.type === "intent") {
+            if (payload.mode === "customize") bot.textContent = "按你的口味定制特调…";
+            else if (payload.value === "library") bot.textContent = "正在对照配方库…";
+          } else if (payload.type === "mode" && payload.value === "clarify") {
+            bot.textContent = "想先确认基酒和做法…";
+          } else if (payload.type === "sources") {
+            const items = payload.items || [];
+            const label = payload.role === "reference" ? "参考配方" : "库内配方";
+            sourcesHtml = items.length
+              ? `<div class="chat-sources"><span class="chat-source-label">${label}</span>${items.map((item) =>
+                  `<button type="button" data-id="${item.id}">${
+                    item.image_url ? `<img src="${escapeHtml(item.image_url)}" alt="">` : ""
+                  }<span>${escapeHtml(item.name)}</span></button>`
+                ).join("")}</div>`
+              : "";
+            paint();
+          } else if (payload.type === "images") {
+            const items = payload.items || [];
+            photosHtml = items.length
+              ? `<div class="chat-photos">${items.map((item) =>
+                  `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt || "")}" ${
+                    item.recipe_id ? `data-id="${item.recipe_id}"` : ""
+                  }>`
+                ).join("")}</div>`
+              : photosHtml;
+            paint();
+            bot.querySelectorAll(".chat-photos img[data-id]").forEach((img) => {
+              img.addEventListener("click", () => openDetail(img.dataset.id));
+            });
+          } else if (payload.type === "status") {
+            if (!answer) bot.textContent = payload.text || "处理中…";
+          } else if (payload.type === "image_loading") {
+            photosHtml = loadingHtml;
+            paint();
+          } else if (payload.type === "image" && payload.url) {
+            photosHtml = `<div class="chat-photos custom"><img src="${escapeHtml(payload.url)}" alt="${escapeHtml(payload.alt || "定制特调")}"></div>`;
+            paint();
+          } else if (payload.type === "image_error") {
+            photosHtml = `<p class="meta">配图未生成：${escapeHtml(payload.message || "")}</p>`;
+            paint();
+          } else if (payload.type === "token") {
+            answer += payload.text || "";
+            paint();
+          } else if (payload.type === "error") {
+            throw new Error(payload.message || "对话失败");
+          }
+        });
+        if (!answer) bot.innerHTML = sourcesHtml + photosHtml + "没有生成回答。";
+      } catch (err) {
+        bot.classList.add("error");
+        bot.textContent = err.message;
+      } finally {
+        el("chatSend").disabled = false;
+        el("chatInput").focus();
+      }
+    });
+
     el("filterSource").addEventListener("change", async () => { offset = 0; await loadRecipes(); });
     el("prevBtn").addEventListener("click", async () => {
       offset = Math.max(0, offset - pageSize);

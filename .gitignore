@@ -4,3 +4,4 @@
 __pycache__/
 *.pyc
 ai-service/data/
+ai-service/models/

@@ -5,11 +5,17 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.database import Recipe, get_db
+from app.api.excel_export import build_recipes_workbook
+from app.config import DEEPSEEK_API_KEY
+from app.core.database import Recipe, RecipeChunk, get_db
+from app.rag.graph import stream_chat
+from app.rag.retriever import search_recipes
+from app.rag.scheduler import embed_manager
 from crawler.scheduler import manager
 
 router = APIRouter()
@@ -17,6 +23,15 @@ router = APIRouter()
 
 class CrawlRequest(BaseModel):
     source: str  # mixmyth | cocktaildb | all
+
+
+class EmbedRequest(BaseModel):
+    force: bool = False
+
+
+class ChatRequest(BaseModel):
+    session_id: str
+    message: str
 
 
 def _recipe_to_dict(recipe: Recipe) -> dict:
@@ -61,7 +76,8 @@ def stats(db: Session = Depends(get_db)):
     counts: dict[str, int] = {}
     for (source,) in rows:
         counts[source] = counts.get(source, 0) + 1
-    return {"total": sum(counts.values()), "by_source": counts}
+    chunk_total = db.query(RecipeChunk).count()
+    return {"total": sum(counts.values()), "by_source": counts, "chunks": chunk_total}
 
 
 @router.get("/crawl/status")
@@ -97,6 +113,70 @@ def list_recipes(
     total = query.count()
     recipes = query.order_by(Recipe.id.desc()).offset(offset).limit(limit).all()
     return {"total": total, "items": [_recipe_to_dict(recipe) for recipe in recipes]}
+
+
+@router.get("/recipes/export.xlsx")
+def export_recipes_excel(db: Session = Depends(get_db)):
+    """导出库中全部配方；最后一列嵌入缩略图。"""
+    buffer = build_recipes_workbook(db)
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="cocktail-recipes.xlsx"'},
+    )
+
+
+@router.post("/rag/embed")
+def start_embed(payload: EmbedRequest):
+    """后台把 kb_recipe 写成 kb_chunk，不阻塞页面。"""
+    try:
+        return embed_manager.start(force=payload.force)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/rag/embed/status")
+def embed_status():
+    return embed_manager.snapshot()
+
+
+@router.post("/chat/stream")
+async def chat_stream(payload: ChatRequest):
+    """SSE 对话：意图 → 检索或反问 → 流式 token → 库内图或定制生图。"""
+    if not DEEPSEEK_API_KEY:
+        raise HTTPException(status_code=500, detail="未配置 DEEPSEEK_API_KEY")
+    message = payload.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="请输入问题")
+    session_id = payload.session_id.strip() or "default"
+
+    async def events():
+        async for event in stream_chat(session_id, message):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.get("/rag/search")
+def rag_search(
+    q: str = Query(..., min_length=1),
+    k: int = Query(default=8, ge=1, le=20),
+    source: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """页面「语义检索」：只查向量，不走 LLM。"""
+    hits = search_recipes(db, q, k=k, source=source)
+    return {
+        "query": q,
+        "items": [
+            {**_recipe_to_dict(recipe), "score": round(1 - distance, 4)}
+            for recipe, distance in hits
+        ],
+    }
 
 
 @router.get("/recipes/{recipe_id}")

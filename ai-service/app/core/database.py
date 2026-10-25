@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+from pgvector.psycopg import register_vector
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Column,
     DateTime,
@@ -12,15 +14,21 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     create_engine,
+    event,
     text,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-from app.config import DATABASE_URL
+from app.config import DATABASE_URL, EMBEDDING_DIM
 
 engine = create_engine(DATABASE_URL, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 Base = declarative_base()
+
+
+@event.listens_for(engine, "connect")
+def _register_vector(dbapi_connection, _connection_record) -> None:
+    register_vector(dbapi_connection)
 
 
 def utcnow() -> datetime:
@@ -60,6 +68,11 @@ class Recipe(Base):
         cascade="all, delete-orphan",
         order_by="RecipeIngredient.order_index",
     )
+    chunks = relationship(
+        "RecipeChunk",
+        back_populates="recipe",
+        cascade="all, delete-orphan",
+    )
 
 
 class RecipeIngredient(Base):
@@ -73,6 +86,27 @@ class RecipeIngredient(Base):
     order_index = Column(Integer, default=1)
 
     recipe = relationship("Recipe", back_populates="ingredients")
+
+
+class RecipeChunk(Base):
+    """kb_chunk：一条配方一段检索文本 + 1024 维向量。对话检索只读这张表。"""
+
+    __tablename__ = "kb_chunk"
+    # 同一配方同一 chunk 类型只有一行，重复向量化是更新不是插入
+    __table_args__ = (UniqueConstraint("recipe_id", "chunk_type", name="uq_kb_chunk_recipe_type"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    recipe_id = Column(Integer, ForeignKey("kb_recipe.id", ondelete="CASCADE"), nullable=False, index=True)
+    source = Column(String(32), nullable=False, index=True)
+    source_id = Column(String(128), nullable=False)
+    chunk_type = Column(String(32), nullable=False, default="recipe_full")  # 目前只有 recipe_full
+    content = Column(Text, nullable=False)  # chunker 拼出来的中文检索文本
+    content_hash = Column(String(64), nullable=False)  # SHA-256，相同则跳过重算
+    embedding = Column(Vector(EMBEDDING_DIM), nullable=False)  # HNSW 余弦索引见 init_db
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    recipe = relationship("Recipe", back_populates="chunks")
 
 
 class CrawlRun(Base):
@@ -91,8 +125,10 @@ class CrawlRun(Base):
 
 
 def init_db() -> None:
+    # 必须先有 vector 扩展，才能建 embedding 列
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     Base.metadata.create_all(bind=engine)
-    # create_all 不会给已有表加新列，这里补齐后期加上的字段
     statements = [
         "ALTER TABLE kb_recipe ADD COLUMN IF NOT EXISTS method_label VARCHAR(64) DEFAULT ''",
         "ALTER TABLE kb_recipe ADD COLUMN IF NOT EXISTS category VARCHAR(32) DEFAULT ''",
@@ -100,6 +136,7 @@ def init_db() -> None:
         "ALTER TABLE kb_recipe ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''",
         "ALTER TABLE kb_recipe ADD COLUMN IF NOT EXISTS description_en TEXT DEFAULT ''",
         "ALTER TABLE kb_recipe ALTER COLUMN abv_range TYPE VARCHAR(32)",
+        "CREATE INDEX IF NOT EXISTS idx_kb_chunk_embedding ON kb_chunk USING hnsw (embedding vector_cosine_ops)",
     ]
     with engine.begin() as conn:
         for statement in statements:
