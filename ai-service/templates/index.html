@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鸡尾酒知识库 · 数据获取 MVP</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <h1>鸡尾酒知识库 MVP</h1>
+    <p class="sub">从 MixMyth 或 TheCocktailDB 拉取配方，清洗后写入本地知识库并在此展示。</p>
+
+    <section class="panel">
+      <div class="row">
+        <label>
+          爬取站点
+          <select id="source">
+            <option value="mixmyth">MixMyth 谜酌</option>
+            <option value="cocktaildb">TheCocktailDB</option>
+            <option value="all">两个站点都爬</option>
+          </select>
+        </label>
+        <button id="crawlBtn" type="button">开始爬取</button>
+        <label>
+          展示来源
+          <select id="filterSource">
+            <option value="">全部</option>
+            <option value="mixmyth">MixMyth</option>
+            <option value="cocktaildb">CocktailDB</option>
+          </select>
+        </label>
+        <input id="keyword" type="search" placeholder="搜索中英文名称">
+        <button class="ghost" id="searchBtn" type="button">筛选</button>
+      </div>
+      <div class="stats">
+        <span>库存合计 <b id="totalCount">0</b></span>
+        <span>MixMyth <b id="mixmythCount">0</b></span>
+        <span>CocktailDB <b id="cocktaildbCount">0</b></span>
+      </div>
+      <div class="status" id="status">就绪</div>
+    </section>
+
+    <section class="grid" id="grid"></section>
+    <div class="pager">
+      <button class="ghost" id="prevBtn" type="button">上一页</button>
+      <span id="pageInfo">0 / 0</span>
+      <button class="ghost" id="nextBtn" type="button">下一页</button>
+    </div>
+  </div>
+
+  <dialog id="detail">
+    <div class="modal" id="detailBody"></div>
+  </dialog>
+
+  <script>
+    // 页面只调四个接口：/api/stats、/api/recipes、/api/crawl、/api/crawl/status
+    const pageSize = 24;
+    let offset = 0;
+    let total = 0;
+    let timer = null;
+
+    const el = (id) => document.getElementById(id);
+
+    async function fetchJSON(url, options) {
+      const res = await fetch(url, options);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "请求失败");
+      return data;
+    }
+
+    async function loadStats() {
+      const data = await fetchJSON("/api/stats");
+      el("totalCount").textContent = data.total;
+      el("mixmythCount").textContent = data.by_source.mixmyth || 0;
+      el("cocktaildbCount").textContent = data.by_source.cocktaildb || 0;
+    }
+
+    async function loadRecipes() {
+      const source = el("filterSource").value;
+      const q = el("keyword").value.trim();
+      const params = new URLSearchParams({ limit: pageSize, offset });
+      if (source) params.set("source", source);
+      if (q) params.set("q", q);
+      const data = await fetchJSON("/api/recipes?" + params.toString());
+      total = data.total;
+      el("pageInfo").textContent = `${Math.min(offset + 1, total)}-${Math.min(offset + pageSize, total)} / ${total}`;
+      el("grid").innerHTML = data.items.map((item) => `
+        <article class="card" data-id="${item.id}">
+          <img src="${item.image_url || ""}" alt="${item.name}" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+          <div class="body">
+            <span class="tag">${item.source}</span>
+            <h3>${item.name}</h3>
+            <div class="meta">${item.name_en || ""} · ${item.glass || "杯型未知"} · ${item.method_label || item.method}</div>
+          </div>
+        </article>
+      `).join("") || "<p class='sub'>还没有数据，先选一个站点爬取。</p>";
+      document.querySelectorAll(".card").forEach((card) => {
+        card.addEventListener("click", () => openDetail(card.dataset.id));
+      });
+    }
+
+    async function openDetail(id) {
+      const item = await fetchJSON("/api/recipes/" + id);
+      const ings = item.ingredients.map((row) => {
+        const amount = row.amount == null ? "" : row.amount;
+        return `<li>${row.name} ${amount}${row.unit || ""}</li>`;
+      }).join("");
+      const spec = (value, label) => value ? `<div><b>${value}</b><span>${label}</span></div>` : "";
+      el("detailBody").innerHTML = `
+        <h2>${item.name}</h2>
+        <p class="meta">${item.name_en || ""} · ${item.source}/${item.source_id}</p>
+        ${item.image_url ? `<div class="hero"><img src="${item.image_url}" alt="${item.name}" referrerpolicy="no-referrer"></div>` : ""}
+        ${item.description ? `<p class="desc">${item.description}</p>` : ""}
+        <div class="specs">
+          ${spec(item.glass, "杯型")}
+          ${spec(item.method_label || item.method, "调制方式")}
+          ${spec(item.base_spirit, "基酒")}
+          ${spec(item.abv_range, "酒精度")}
+        </div>
+        <p>${(item.flavor_tags || []).map((tag) => `<span class="tag">${tag}</span>`).join("")}</p>
+        ${item.garnish ? `<p class="meta">装饰：${item.garnish}</p>` : ""}
+        <h3>材料</h3>
+        <ul class="ing">${ings}</ul>
+        <h3>步骤</h3>
+        <pre>${item.instructions || "暂无"}</pre>
+        <p><button class="ghost" onclick="document.getElementById('detail').close()">关闭</button></p>
+      `;
+      el("detail").showModal();
+    }
+
+    async function refreshStatus() {
+      const data = await fetchJSON("/api/crawl/status");
+      const box = el("status");
+      box.classList.toggle("error", Boolean(data.error));
+      box.textContent = data.running
+        ? `${data.progress} · 已抓 ${data.fetched}`
+        : (data.error || data.progress || "就绪");
+      el("crawlBtn").disabled = Boolean(data.running);
+      if (!data.running) {
+        clearInterval(timer);
+        timer = null;
+        await loadStats();
+        await loadRecipes();
+      }
+    }
+
+    el("crawlBtn").addEventListener("click", async () => {
+      try {
+        await fetchJSON("/api/crawl", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: el("source").value }),
+        });
+        if (!timer) timer = setInterval(refreshStatus, 1000);
+        await refreshStatus();
+      } catch (err) {
+        el("status").textContent = err.message;
+        el("status").classList.add("error");
+      }
+    });
+    el("searchBtn").addEventListener("click", async () => { offset = 0; await loadRecipes(); });
+    el("filterSource").addEventListener("change", async () => { offset = 0; await loadRecipes(); });
+    el("prevBtn").addEventListener("click", async () => {
+      offset = Math.max(0, offset - pageSize);
+      await loadRecipes();
+    });
+    el("nextBtn").addEventListener("click", async () => {
+      if (offset + pageSize < total) offset += pageSize;
+      await loadRecipes();
+    });
+
+    loadStats().then(loadRecipes).then(refreshStatus);
+  </script>
+</body>
+</html>
