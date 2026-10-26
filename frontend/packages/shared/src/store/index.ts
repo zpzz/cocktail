@@ -13,4 +13,4 @@ export type AppStore = ReturnType<typeof createAppStore>;
 export type RootState = ReturnType<AppStore['getState']>;
 export type AppDispatch = AppStore['dispatch'];
 
-export { signedIn, signedOut } from './authSlice';
+export { authHydrated, signedIn, tokensRefreshed, signedOut } from './authSlice';

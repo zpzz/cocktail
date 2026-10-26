@@ -13,6 +13,8 @@ export type ChatMessage = {
   generatedImageUrl?: string;
   imageError?: string;
   imageLoading?: boolean;
+  interruptQuestion?: string;
+  interruptOptions?: string[];
   error?: string;
 };
 
@@ -98,6 +100,16 @@ export function parseChatEvent(raw: unknown): ChatEvent | null {
       return { type, message: String(event.message ?? '配图未生成') };
     case 'token':
       return { type, text: String(event.text ?? event.content ?? '') };
+    case 'interrupt': {
+      const options = Array.isArray(event.options)
+        ? event.options.map((item) => String(item))
+        : [];
+      return {
+        type,
+        question: String(event.question ?? ''),
+        options,
+      };
+    }
     case 'error':
       return { type, message: String(event.message ?? '对话失败') };
     case 'done':
@@ -141,6 +153,14 @@ export function applyChatEvent(message: ChatMessage, event: ChatEvent): ChatMess
         ...message,
         text: `${message.text}${event.text}`,
         status: undefined,
+      };
+    case 'interrupt':
+      return {
+        ...message,
+        status: undefined,
+        interruptQuestion: event.question,
+        interruptOptions: event.options,
+        text: message.text || event.question,
       };
     case 'error':
       return { ...message, error: event.message, status: undefined };

@@ -5,7 +5,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,7 @@ import com.cocktail.chat.client.AiServiceClient;
 import com.cocktail.config.CocktailProperties;
 import com.cocktail.ingredient.domain.IngredientService;
 import com.cocktail.ingredient.domain.KbIngredient;
+import com.cocktail.ingredient.mapper.KbIngredientMapper;
 import com.cocktail.shared.exception.BusinessException;
 import com.cocktail.shared.security.SecurityUtils;
 import com.cocktail.workbench.api.WorkbenchDtos.AnalyzeResponse;
@@ -45,6 +48,7 @@ public class WorkbenchService {
     private final WorkbenchSessionMapper sessionMapper;
     private final WorkbenchSessionItemMapper itemMapper;
     private final IngredientService ingredientService;
+    private final KbIngredientMapper kbIngredientMapper;
     private final AiServiceClient aiServiceClient;
     private final ObjectMapper objectMapper;
     private final int maxIngredients;
@@ -53,6 +57,7 @@ public class WorkbenchService {
             WorkbenchSessionMapper sessionMapper,
             WorkbenchSessionItemMapper itemMapper,
             IngredientService ingredientService,
+            KbIngredientMapper kbIngredientMapper,
             AiServiceClient aiServiceClient,
             ObjectMapper objectMapper,
             CocktailProperties properties
@@ -60,6 +65,7 @@ public class WorkbenchService {
         this.sessionMapper = sessionMapper;
         this.itemMapper = itemMapper;
         this.ingredientService = ingredientService;
+        this.kbIngredientMapper = kbIngredientMapper;
         this.aiServiceClient = aiServiceClient;
         this.objectMapper = objectMapper;
         this.maxIngredients = properties.workbench().maxIngredients();
@@ -139,7 +145,7 @@ public class WorkbenchService {
         return toView(session, List.of());
     }
 
-    /** 「酒灵」判断成杯可行性：组 session 快照调 Python。 */
+    /** 「酒方」判断成杯可行性：组 session 快照调 Python。 */
     @Transactional(readOnly = true)
     public AnalyzeResponse analyze(String sessionId) {
         WorkbenchSession session = requireOwned(sessionId);
@@ -237,8 +243,15 @@ public class WorkbenchService {
                     .orElse(new GlassView(session.getGlassCode(), session.getGlassCode(), null,
                             session.getCapacityMl() == null ? 0 : session.getCapacityMl(), null));
         }
+        Map<Long, String> imageById = loadImageUrls(items);
         List<IngredientLine> lines = items.stream()
-                .map(i -> new IngredientLine(i.getIngredientId(), i.getName(), i.getAmount(), i.getUnit()))
+                .map(i -> new IngredientLine(
+                        i.getIngredientId(),
+                        i.getName(),
+                        i.getAmount(),
+                        i.getUnit(),
+                        imageById.get(i.getIngredientId())
+                ))
                 .toList();
         BigDecimal volume = volumeOf(items);
         Integer capacity = session.getCapacityMl();
@@ -307,6 +320,22 @@ public class WorkbenchService {
         } catch (Exception ex) {
             return List.of();
         }
+    }
+
+    private Map<Long, String> loadImageUrls(List<WorkbenchSessionItem> items) {
+        List<Long> ids = items.stream()
+                .map(WorkbenchSessionItem::getIngredientId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return kbIngredientMapper.selectList(new LambdaQueryWrapper<KbIngredient>()
+                        .in(KbIngredient::getId, ids))
+                .stream()
+                .filter(k -> k.getImageUrl() != null && !k.getImageUrl().isBlank())
+                .collect(Collectors.toMap(KbIngredient::getId, KbIngredient::getImageUrl, (a, b) -> a));
     }
 
     private static String blankToNull(String value) {

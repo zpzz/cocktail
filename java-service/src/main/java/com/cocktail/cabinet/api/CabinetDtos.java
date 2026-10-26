@@ -76,8 +76,17 @@ public final class CabinetDtos {
 
     @Schema(description = "用库存生成酒单请求")
     public record MenuRequest(
-            @Schema(description = "推荐条数，默认 10", example = "10") Integer limit,
+            @Schema(description = "推荐条数，默认 5", example = "5") Integer limit,
             @Schema(description = "是否尽量品类多样，默认 true", example = "true") Boolean diversity
+    ) {
+    }
+
+    @Schema(description = "酒单配方中的一条材料用量")
+    public record MenuIngredient(
+            @Schema(description = "材料中文名") String name,
+            @Schema(description = "材料英文名") String nameEn,
+            @Schema(description = "用量") Double amount,
+            @Schema(description = "单位") String unit
     ) {
     }
 
@@ -93,7 +102,9 @@ public final class CabinetDtos {
             @Schema(description = "配图 URL") String imageUrl,
             @Schema(description = "匹配类型：full=全匹配，partial=有缺料") String matchType,
             @Schema(description = "缺少的材料名列表") List<String> missing,
-            @Schema(description = "替代建议") List<String> substitutes
+            @Schema(description = "替代建议") List<String> substitutes,
+            @Schema(description = "做法步骤") String instructions,
+            @Schema(description = "材料用量列表") List<MenuIngredient> ingredients
     ) {
     }
 
@@ -108,7 +119,8 @@ public final class CabinetDtos {
     @Schema(description = "酒单生成响应")
     public record MenuResponse(
             @Schema(description = "推荐配方列表") List<MenuRecipe> recipes,
-            @Schema(description = "元信息") MenuMeta meta
+            @Schema(description = "元信息") MenuMeta meta,
+            @Schema(description = "自动保存后的酒单 ID") Long savedMenuId
     ) {
     }
 
@@ -134,8 +146,9 @@ public final class CabinetDtos {
 
     @Schema(description = "拍照识别响应")
     public record RecognizeResponse(
-            @Schema(description = "已匹配到知识库的材料，可供勾选添加") List<RecognizeMatched> matched,
-            @Schema(description = "未匹配项，仅提示") List<RecognizeUnmatched> unmatched
+            @Schema(description = "模糊匹配到的候选材料（多关键词合并去重），供用户勾选") List<RecognizeMatched> matched,
+            @Schema(description = "未匹配项，仅提示") List<RecognizeUnmatched> unmatched,
+            @Schema(description = "识别出的关键词/标签，便于前端展示") List<String> keywords
     ) {
     }
 }

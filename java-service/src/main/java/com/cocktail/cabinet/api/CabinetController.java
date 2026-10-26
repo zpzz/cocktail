@@ -78,7 +78,7 @@ public class CabinetController {
         return ApiResponse.ok();
     }
 
-    @Operation(summary = "拍照批量识别材料", description = "上传图片 → AI 识别 → 仅返回知识库中能匹配到的材料，勾选后再调「添加库存」")
+    @Operation(summary = "拍照批量识别材料", description = "上传图片 → AI 多标签识别 → 多关键词模糊匹配候选材料（不自动选定），用户勾选后再调「添加库存」")
     @PostMapping(value = "/recognize", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<RecognizeResponse> recognize(
             @Parameter(description = "酒瓶/材料照片") @RequestParam("file") MultipartFile file
@@ -86,7 +86,7 @@ public class CabinetController {
         return ApiResponse.ok(cabinetService.recognize(file));
     }
 
-    @Operation(summary = "用库存生成酒单", description = "默认推荐 10 个配方，尽量品类多样；需 AI 服务可用")
+    @Operation(summary = "用库存生成酒单", description = "默认推荐 5 个配方，优先匹配基酒/利口酒/糖浆，尽量品类多样；需 AI 服务可用")
     @PostMapping("/menu")
     public ApiResponse<MenuResponse> menu(@RequestBody(required = false) MenuRequest request) {
         return ApiResponse.ok(cabinetService.menu(request == null ? new MenuRequest(null, null) : request));

@@ -11,12 +11,22 @@ export function createChatService(http: HttpClient) {
       onEvent: (event: ChatEvent) => void,
       signal?: AbortSignal,
     ) {
+      const path = payload.resume ? API_PATHS.chatResume : API_PATHS.chat;
+      const body = payload.resume
+        ? {
+            threadId: payload.threadId,
+            userInput: payload.message,
+          }
+        : {
+            threadId: payload.threadId,
+            userInput: payload.message,
+            attachCabinet: payload.attachCabinet ?? true,
+            context: { mode: 'home' },
+          };
+
       await http.postSse(
-        API_PATHS.aiChatStream,
-        {
-          session_id: payload.sessionId,
-          message: payload.message,
-        },
+        path,
+        body,
         (raw) => {
           const event = parseChatEvent(raw);
           if (event) {

@@ -18,6 +18,7 @@ import {
   View,
 } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resolveMediaUrl } from '../adapters/apiBase';
 import { chatService } from '../api';
 
@@ -28,8 +29,9 @@ const WELCOME: ChatMessage = {
 };
 
 export function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const sessionId = useMemo(() => createThreadId(), []);
+  const threadId = useMemo(() => createThreadId(), []);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -57,7 +59,11 @@ export function HomeScreen() {
     abortRef.current = controller;
     try {
       await chatService.stream(
-        { sessionId, message },
+        {
+          threadId,
+          message,
+          attachCabinet: true,
+        },
         (event) => {
           if (event.type === 'error') {
             throw new Error(event.message);
@@ -86,7 +92,12 @@ export function HomeScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
+      <View style={styles.header}>
+        <Text style={styles.kicker}>Home</Text>
+        <Text style={styles.title}>首页</Text>
+        <Text style={styles.sub}>查配方 · 聊特调 · 酒方陪你调一杯</Text>
+      </View>
       <FlatList
         ref={listRef}
         data={messages}
@@ -179,6 +190,27 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#14110F',
+  },
+  header: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  kicker: {
+    color: '#C9A227',
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  title: {
+    color: '#F4EDE4',
+    fontSize: 28,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  sub: {
+    color: '#8B8178',
+    fontSize: 13,
+    marginTop: 4,
   },
   list: {
     padding: 16,

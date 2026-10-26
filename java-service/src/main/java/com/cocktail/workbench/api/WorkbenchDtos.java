@@ -82,7 +82,8 @@ public final class WorkbenchDtos {
             @Schema(description = "材料 ID") Long ingredientId,
             @Schema(description = "材料名") String name,
             @Schema(description = "用量") BigDecimal amount,
-            @Schema(description = "单位") String unit
+            @Schema(description = "单位") String unit,
+            @Schema(description = "材料图片 URL") String imageUrl
     ) {
     }
 

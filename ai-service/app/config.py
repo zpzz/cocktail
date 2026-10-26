@@ -68,6 +68,8 @@ IMAGE_BASE_URL = os.getenv(
     "https://dashscope.aliyuncs.com/compatible-mode/v1",
 ).rstrip("/")
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "qwen-image-2.1-pro")
+# 酒瓶识图（视觉理解，不是生图）
+VISION_MODEL = os.getenv("VISION_MODEL", "qwen3.8-omni-flash")
 
 # 向量 API key 未单独配置时复用百炼 IMAGE_API_KEY
 EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "") or IMAGE_API_KEY

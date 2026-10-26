@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -7,10 +7,19 @@ import {
   KeyboardController,
   KeyboardProvider,
 } from 'react-native-keyboard-controller';
-import { Provider } from 'react-redux';
+import { Provider, useDispatch } from 'react-redux';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { hydrateAuth } from './src/auth/session';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { store } from './src/store';
+import { store, type AppDispatch } from './src/store';
+
+function AuthBootstrap({ children }: { children: ReactNode }) {
+  const dispatch = useDispatch<AppDispatch>();
+  useEffect(() => {
+    void hydrateAuth(dispatch);
+  }, [dispatch]);
+  return children;
+}
 
 export default function App() {
   useEffect(() => {
@@ -27,7 +36,9 @@ export default function App() {
       <KeyboardProvider>
         <Provider store={store}>
           <SafeAreaProvider>
-            <RootNavigator />
+            <AuthBootstrap>
+              <RootNavigator />
+            </AuthBootstrap>
             <StatusBar style="light" />
           </SafeAreaProvider>
         </Provider>

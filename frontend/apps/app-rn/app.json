@@ -15,6 +15,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.cocktail.app",
       "infoPlist": {
+        "NSCameraUsageDescription": "用于拍摄酒瓶，识别材料并加入酒柜",
+        "NSPhotoLibraryUsageDescription": "用于选择酒瓶照片，识别材料并加入酒柜",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
@@ -24,6 +26,10 @@
     "android": {
       "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#14110F",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -35,6 +41,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "用于选择酒瓶照片，识别材料并加入酒柜",
+          "cameraPermission": "用于拍摄酒瓶，识别材料并加入酒柜"
+        }
+      ]
+    ]
   }
 }

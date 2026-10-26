@@ -1,5 +1,10 @@
 package com.cocktail.ingredient.domain;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +36,7 @@ public class IngredientService {
 
     /**
      * 模糊搜 name / name_en；不传 category 即全库。
+     * q 支持多个关键词（空格 / 逗号 / 顿号等分隔），任一命中即可（OR）。
      * sub_category（如金酒）目前在内存里按名称启发式过滤。
      */
     @Transactional(readOnly = true)
@@ -42,11 +48,20 @@ public class IngredientService {
         if (category != null && !category.isBlank()) {
             wrapper.eq(KbIngredient::getCategory, category.trim());
         }
-        if (q != null && !q.isBlank()) {
-            String keyword = q.trim();
-            wrapper.and(w -> w.like(KbIngredient::getName, keyword)
-                    .or()
-                    .like(KbIngredient::getNameEn, keyword));
+        List<String> keywords = splitKeywords(q);
+        if (!keywords.isEmpty()) {
+            wrapper.and(w -> {
+                boolean first = true;
+                for (String keyword : keywords) {
+                    final String k = keyword;
+                    if (first) {
+                        w.and(x -> x.like(KbIngredient::getName, k).or().like(KbIngredient::getNameEn, k));
+                        first = false;
+                    } else {
+                        w.or(x -> x.like(KbIngredient::getName, k).or().like(KbIngredient::getNameEn, k));
+                    }
+                }
+            });
         }
         wrapper.orderByAsc(KbIngredient::getName);
 
@@ -58,6 +73,28 @@ public class IngredientService {
 
         long total = blankToNull(subCategory) == null ? result.getTotal() : items.size();
         return new SearchResponse(items, total, safePage, safeSize);
+    }
+
+    /**
+     * 把「金酒,朗姆 伏特加」拆成多个关键词；去重、去空，单段最长保留 40 字。
+     */
+    static List<String> splitKeywords(String q) {
+        if (q == null || q.isBlank()) {
+            return List.of();
+        }
+        String[] parts = q.trim().split("[,，、|;；\\s]+");
+        Set<String> out = new LinkedHashSet<>();
+        for (String part : parts) {
+            String t = part.trim();
+            if (t.length() < 1) {
+                continue;
+            }
+            if (t.length() > 40) {
+                t = t.substring(0, 40);
+            }
+            out.add(t);
+        }
+        return new ArrayList<>(out);
     }
 
     @Transactional(readOnly = true)

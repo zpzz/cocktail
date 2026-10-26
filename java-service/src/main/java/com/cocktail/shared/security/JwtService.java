@@ -17,12 +17,14 @@ import io.jsonwebtoken.security.Keys;
 /**
  * Access Token 的签发与解析（HS256）。
  * <p>
+ * APP 场景默认不过期：{@code access-ttl-minutes <= 0} 时不写 {@code exp}。
  * Refresh Token 不走 JWT，是随机串存在 {@code refresh_token} 表，见 {@code AuthService}。
  */
 @Service
 public class JwtService {
 
     private final SecretKey key;
+    /** <=0 表示 Access Token 永不过期。 */
     private final long accessTtlMinutes;
 
     public JwtService(CocktailProperties properties) {
@@ -37,16 +39,17 @@ public class JwtService {
         this.accessTtlMinutes = properties.jwt().accessTtlMinutes();
     }
 
-    /** 登录成功后签发短时效 Access Token；subject = 用户 id。 */
+    /** 登录成功后签发 Access Token；subject = 用户 id。 */
     public String createAccessToken(Long userId, String username) {
         Instant now = Instant.now();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusSeconds(accessTtlMinutes * 60)))
-                .signWith(key)
-                .compact();
+                .issuedAt(Date.from(now));
+        if (accessTtlMinutes > 0) {
+            builder.expiration(Date.from(now.plusSeconds(accessTtlMinutes * 60)));
+        }
+        return builder.signWith(key).compact();
     }
 
     /** 解析并校验签名/过期；失败抛异常。 */
@@ -58,8 +61,8 @@ public class JwtService {
                 .getPayload();
     }
 
-    /** 给前端的 expiresIn（秒）。 */
+    /** 给前端的 expiresIn（秒）；0 表示不过期。 */
     public long accessExpiresInSeconds() {
-        return accessTtlMinutes * 60;
+        return accessTtlMinutes > 0 ? accessTtlMinutes * 60 : 0;
     }
 }

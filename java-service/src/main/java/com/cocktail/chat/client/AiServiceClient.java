@@ -1,5 +1,6 @@
 package com.cocktail.chat.client;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -129,7 +130,7 @@ public class AiServiceClient {
         }
     }
 
-    /** 按酒柜快照向量检索酒单，默认 10 条、diversity 尽量品类分散。 */
+    /** 按酒柜快照生成酒单，默认 5 条、diversity 尽量品类分散。 */
     public List<MenuRecipe> cabinetMenu(List<Map<String, Object>> snapshot, int limit, boolean diversity) {
         Map<String, Object> body = new HashMap<>();
         body.put("cabinet_snapshot", snapshot);
@@ -188,7 +189,9 @@ public class AiServiceClient {
                 stringVal(map.get("image_url") != null ? map.get("image_url") : map.get("imageUrl")),
                 stringVal(map.get("match_type") != null ? map.get("match_type") : map.get("matchType")),
                 asStringList(map.get("missing")),
-                asStringList(map.get("substitutes"))
+                asStringList(map.get("substitutes")),
+                stringVal(map.get("instructions")),
+                asIngredients(map.get("ingredients"))
         );
     }
 
@@ -197,6 +200,32 @@ public class AiServiceClient {
             return Collections.emptyList();
         }
         return list.stream().map(String::valueOf).toList();
+    }
+
+    private static List<com.cocktail.cabinet.api.CabinetDtos.MenuIngredient> asIngredients(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return Collections.emptyList();
+        }
+        List<com.cocktail.cabinet.api.CabinetDtos.MenuIngredient> out = new ArrayList<>();
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> raw)) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> row = (Map<String, Object>) raw;
+            Double amount = null;
+            Object amountObj = row.get("amount");
+            if (amountObj instanceof Number n) {
+                amount = n.doubleValue();
+            }
+            out.add(new com.cocktail.cabinet.api.CabinetDtos.MenuIngredient(
+                    stringVal(row.get("name")),
+                    stringVal(row.get("name_en") != null ? row.get("name_en") : row.get("nameEn")),
+                    amount,
+                    stringVal(row.get("unit"))
+            ));
+        }
+        return out;
     }
 
     private static Long asLong(Object value) {

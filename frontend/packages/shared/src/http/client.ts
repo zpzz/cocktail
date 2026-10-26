@@ -6,9 +6,37 @@ export type StreamOptions = {
   signal?: AbortSignal;
 };
 
+export type HttpClientOptions = {
+  /** 返回当前 accessToken；无则不带 Authorization */
+  getAccessToken?: () => string | null | undefined;
+  /** 返回 refreshToken，供 401 时自动刷新 */
+  getRefreshToken?: () => string | null | undefined;
+  /** Access / Refresh 刷新成功后写回本地态 */
+  onTokensRefreshed?: (tokens: {
+    accessToken: string;
+    refreshToken: string;
+  }) => void | Promise<void>;
+  /** Refresh 失败：清登录态并回登录页 */
+  onAuthFailure?: () => void | Promise<void>;
+};
+
+export type MultipartFilePart = {
+  uri: string;
+  name: string;
+  type: string;
+};
+
 export interface HttpClient {
   get<T>(path: string, params?: QueryParams): Promise<T>;
   post<T>(path: string, body?: unknown): Promise<T>;
+  put<T>(path: string, body?: unknown): Promise<T>;
+  patch<T>(path: string, body?: unknown): Promise<T>;
+  delete<T>(path: string): Promise<T>;
+  postMultipart<T>(
+    path: string,
+    fieldName: string,
+    file: MultipartFilePart,
+  ): Promise<T>;
   postSse(
     path: string,
     body: unknown,
