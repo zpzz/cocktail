@@ -1,0 +1,73 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: cocktail-java-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:118.25.145.193}:${POSTGRES_PORT:5432}/${POSTGRES_DB:cocktail}
+    username: ${POSTGRES_USER:cocktail}
+    password: ${POSTGRES_PASSWORD:cocktail}
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      continue-on-error: true
+  jackson:
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# Swagger UI：http://127.0.0.1:8080/swagger-ui.html
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    persist-authorization: true
+    try-it-out-enabled: true
+    with-credentials: true
+    # 登录后把 ACCESS_TOKEN 自动加到 Authorization（含 SSE）
+    custom-js: /swagger-auth.js
+    display-request-duration: true
+
+cocktail:
+  jwt:
+    secret: ${JWT_SECRET:cocktail-dev-secret-change-me-please-32bytes}
+    access-ttl-minutes: 30
+    refresh-ttl-days: 14
+  ai:
+    base-url: ${AI_SERVICE_URL:http://127.0.0.1:8000}
+    chat-path: /api/ai/chat
+    resume-path: /api/ai/chat/resume
+    recognize-path: /api/ai/ingredients/recognize
+    cabinet-menu-path: /api/ai/cabinet/menu
+    workbench-analyze-path: /api/ai/workbench/analyze
+    workbench-generate-path: /api/ai/workbench/generate
+  workbench:
+    max-ingredients: 12
+
+logging:
+  level:
+    com.cocktail: INFO
+    com.cocktail.user.mapper: DEBUG
+    com.cocktail.cabinet.mapper: DEBUG
+    com.cocktail.ingredient.mapper: DEBUG
+    com.cocktail.workbench.mapper: DEBUG

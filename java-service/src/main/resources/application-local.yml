@@ -1,0 +1,4 @@
+# 本地覆盖：spring.profiles.active=local
+logging:
+  level:
+    com.cocktail: DEBUG
