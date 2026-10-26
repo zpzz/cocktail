@@ -11,10 +11,11 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.excel_export import build_recipes_workbook
+from app.api.excel_export import build_ingredients_workbook, build_recipes_workbook
 from app.config import MINIO_BUCKET
-from app.core.database import Recipe, RecipeChunk, get_db
+from app.core.database import Recipe, RecipeChunk, RecipeIngredient, get_db
 from app.core.storage import minio_client
+from app.ingredients.scheduler import ingredient_clean_manager
 from app.rag.retriever import search_recipes
 from app.rag.scheduler import embed_manager
 from crawler.scheduler import manager
@@ -27,6 +28,10 @@ class CrawlRequest(BaseModel):
 
 
 class EmbedRequest(BaseModel):
+    force: bool = False
+
+
+class IngredientCleanRequest(BaseModel):
     force: bool = False
 
 
@@ -56,10 +61,14 @@ def _recipe_to_dict(recipe: Recipe) -> dict:
         "image_url": recipe.image_url,
         "ingredients": [
             {
-                "name": item.ingredient_name,
+                "name": (item.ingredient.name if item.ingredient else "") or "",
+                "name_en": (item.ingredient.name_en if item.ingredient else "") or "",
+                "category": (item.ingredient.category if item.ingredient else "") or "",
+                "primary_unit": (item.ingredient.primary_unit if item.ingredient else "") or "",
                 "amount": float(item.amount) if item.amount is not None else None,
                 "unit": item.unit,
                 "order_index": item.order_index,
+                "image_url": (item.ingredient.image_url if item.ingredient else "") or "",
             }
             for item in recipe.ingredients
         ],
@@ -129,7 +138,9 @@ def list_recipes(
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Recipe).options(selectinload(Recipe.ingredients))
+    query = db.query(Recipe).options(
+        selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient)
+    )
     if source in {"mixmyth", "cocktaildb"}:
         query = query.filter(Recipe.source == source)
     if q:
@@ -142,13 +153,38 @@ def list_recipes(
 
 @router.get("/recipes/export.xlsx")
 def export_recipes_excel(db: Session = Depends(get_db)):
-    """导出库中全部配方；最后一列嵌入缩略图。"""
+    """导出库中全部配方（文本 + 图片 URL，不嵌图）。"""
     buffer = build_recipes_workbook(db)
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": 'attachment; filename="cocktail-recipes.xlsx"'},
     )
+
+
+@router.get("/ingredients/export.xlsx")
+def export_ingredients_excel(db: Session = Depends(get_db)):
+    """导出去重后的材料清单（文本 + 图片 URL，不嵌图）。"""
+    buffer = build_ingredients_workbook(db)
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="cocktail-ingredients.xlsx"'},
+    )
+
+
+@router.post("/ingredients/clean")
+def start_ingredient_clean(payload: IngredientCleanRequest):
+    """后台清洗材料表：补英文名 + AI 分类。"""
+    try:
+        return ingredient_clean_manager.start(force=payload.force)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/ingredients/clean/status")
+def ingredient_clean_status():
+    return ingredient_clean_manager.snapshot()
 
 
 @router.post("/rag/embed")
@@ -187,7 +223,7 @@ def rag_search(
 def recipe_detail(recipe_id: int, db: Session = Depends(get_db)):
     recipe = (
         db.query(Recipe)
-        .options(selectinload(Recipe.ingredients))
+        .options(selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient))
         .filter(Recipe.id == recipe_id)
         .one_or_none()
     )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.database import Recipe, RecipeChunk
+from app.core.database import Recipe, RecipeChunk, RecipeIngredient
 from app.rag.chunker import CHUNK_TYPE_FULL
 from app.rag.embedder import embed_texts
 
@@ -30,7 +30,7 @@ def search_recipes(
     statement = (
         db.query(Recipe, distance.label("distance"))
         .join(RecipeChunk, RecipeChunk.recipe_id == Recipe.id)
-        .options(selectinload(Recipe.ingredients))
+        .options(selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient))
         .filter(RecipeChunk.chunk_type == CHUNK_TYPE_FULL)
         .order_by(distance)
         .limit(fetch_k)

@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import EMBEDDING_BATCH_SIZE
-from app.core.database import Recipe, RecipeChunk, utcnow
+from app.core.database import Recipe, RecipeChunk, RecipeIngredient, utcnow
 from app.rag.chunker import CHUNK_TYPE_FULL, build_recipe_chunk, content_hash
 from app.rag.embedder import embed_texts
 
@@ -24,7 +24,10 @@ def ingest_recipes(
 
     force=True 会无视 hash 全量重算（换模型或改了 chunker 时用）。
     """
-    query = db.query(Recipe).options(selectinload(Recipe.ingredients), selectinload(Recipe.chunks))
+    query = db.query(Recipe).options(
+        selectinload(Recipe.ingredients).selectinload(RecipeIngredient.ingredient),
+        selectinload(Recipe.chunks),
+    )
     if recipe_ids:
         query = query.filter(Recipe.id.in_(list(recipe_ids)))
     recipes = query.order_by(Recipe.id).all()

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>鸡尾酒知识库 · 数据获取 MVP</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=ing-clean1">
 </head>
 <body>
   <div class="wrap">
@@ -33,6 +33,8 @@
         <input id="keyword" type="search" placeholder="搜索中英文名称">
         <button class="ghost" id="searchBtn" type="button">筛选</button>
         <button class="ghost" id="exportBtn" type="button">导出全部 Excel</button>
+        <button class="ghost" id="exportIngredientsBtn" type="button">导出材料清单</button>
+        <button class="ghost" id="cleanIngredientsBtn" type="button">数据清洗</button>
       </div>
       <div class="stats">
         <span>库存合计 <b id="totalCount">0</b></span>
@@ -41,6 +43,7 @@
         <span>已向量化 <b id="chunkCount">0</b></span>
       </div>
       <div class="status" id="status">就绪</div>
+      <div class="status" id="cleanStatus">材料清洗：补英文名 + AI 分类 + 归并重复写法</div>
     </section>
 
     <section class="panel">
@@ -130,7 +133,17 @@
       const item = await fetchJSON("/api/recipes/" + id);
       const ings = item.ingredients.map((row) => {
         const amount = row.amount == null ? "" : row.amount;
-        return `<li>${row.name} ${amount}${row.unit || ""}</li>`;
+        const amt = `${amount}${row.unit || ""}`.trim();
+        const img = row.image_url
+          ? `<img src="${row.image_url}" alt="${row.name}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">`
+          : `<span class="ing-ph"></span>`;
+        const cat = row.category ? `<div class="ing-cat">${row.category}</div>` : "";
+        return `<div class="ing-item">
+          <div class="ing-img">${img}</div>
+          <div class="ing-name">${row.name}${row.name_en ? ` <span class="meta">(${row.name_en})</span>` : ""}</div>
+          ${cat}
+          <div class="ing-amt">${amt || "适量"}</div>
+        </div>`;
       }).join("");
       const spec = (value, label) => value ? `<div><b>${value}</b><span>${label}</span></div>` : "";
       el("detailBody").innerHTML = `
@@ -147,7 +160,7 @@
         <p>${(item.flavor_tags || []).map((tag) => `<span class="tag">${tag}</span>`).join("")}</p>
         ${item.garnish ? `<p class="meta">装饰：${item.garnish}</p>` : ""}
         <h3>材料</h3>
-        <ul class="ing">${ings}</ul>
+        <div class="ing-grid">${ings}</div>
         <h3>步骤</h3>
         <pre>${item.instructions || "暂无"}</pre>
         <p><button class="ghost" onclick="document.getElementById('detail').close()">关闭</button></p>
@@ -188,6 +201,39 @@
     el("searchBtn").addEventListener("click", async () => { offset = 0; await loadRecipes(); });
     el("exportBtn").addEventListener("click", () => {
       window.location.href = "/api/recipes/export.xlsx";
+    });
+    el("exportIngredientsBtn").addEventListener("click", () => {
+      window.location.href = "/api/ingredients/export.xlsx";
+    });
+
+    let cleanTimer = null;
+    async function refreshCleanStatus() {
+      const data = await fetchJSON("/api/ingredients/clean/status");
+      const box = el("cleanStatus");
+      box.classList.toggle("error", Boolean(data.error));
+      box.textContent = data.running
+        ? `${data.progress} · ${data.updated}/${data.total || "?"}`
+        : (data.error || data.progress || "材料清洗：补英文名 + AI 分类");
+      el("cleanIngredientsBtn").disabled = Boolean(data.running);
+      if (!data.running) {
+        clearInterval(cleanTimer);
+        cleanTimer = null;
+      }
+    }
+
+    el("cleanIngredientsBtn").addEventListener("click", async () => {
+      try {
+        await fetchJSON("/api/ingredients/clean", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: false }),
+        });
+        if (!cleanTimer) cleanTimer = setInterval(refreshCleanStatus, 1000);
+        await refreshCleanStatus();
+      } catch (err) {
+        el("cleanStatus").textContent = err.message;
+        el("cleanStatus").classList.add("error");
+      }
     });
 
     async function refreshEmbedStatus() {

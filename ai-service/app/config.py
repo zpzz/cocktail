@@ -6,9 +6,10 @@ import os
 from dotenv import load_dotenv
 
 # ai-service/ 与仓库根目录（docker-compose、.env 在根目录）
+# override=True：避免系统/用户环境变量（如错误的 MINIO_ROOT_USER）盖住项目 .env
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
-load_dotenv(ROOT_DIR / ".env")
+load_dotenv(ROOT_DIR / ".env", override=True)
 load_dotenv(BASE_DIR / ".env", override=True)
 
 
@@ -45,13 +46,15 @@ MINIO_PUBLIC_BASE = os.getenv(
     f"{'https' if MINIO_SECURE else 'http'}://{MINIO_ENDPOINT}",
 )
 
-# BGE-M3：local 本机加载；api 走 OpenAI 兼容 /embeddings
-EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "local")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+# 向量：api=千问等 OpenAI 兼容 /embeddings；local=本机 SentenceTransformers
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "api")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "qwen3.7-text-embedding-flash")
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1024"))
-EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "").rstrip("/")
-EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "")
-EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "8"))
+EMBEDDING_BASE_URL = os.getenv(
+    "EMBEDDING_BASE_URL",
+    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+).rstrip("/")
+EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "10"))
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
@@ -65,3 +68,6 @@ IMAGE_BASE_URL = os.getenv(
     "https://dashscope.aliyuncs.com/compatible-mode/v1",
 ).rstrip("/")
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "qwen-image-2.1-pro")
+
+# 向量 API key 未单独配置时复用百炼 IMAGE_API_KEY
+EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "") or IMAGE_API_KEY

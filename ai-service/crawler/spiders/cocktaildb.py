@@ -30,6 +30,7 @@ def _ingredient_rows(drink: dict[str, Any]) -> list[dict[str, Any]]:
         rows.append(
             {
                 "name": name,
+                "name_en": name,
                 "amount_raw": (drink.get(f"strMeasure{index}") or "").strip(),
             }
         )

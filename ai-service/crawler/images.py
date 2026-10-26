@@ -1,4 +1,4 @@
-"""下载源站配图，上传到 MinIO，并把配方上的 image_url 换成 MinIO 地址。"""
+"""下载源站配图 / 材料图，上传到 MinIO，并把 URL 换成 MinIO 地址。"""
 
 from __future__ import annotations
 
@@ -14,8 +14,9 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.config import CRAWL_USER_AGENT
-from app.core.database import Recipe
+from app.core.database import Ingredient, Recipe
 from app.core.storage import find_existing_object, is_minio_url, upload_bytes
+from crawler.ingredient_images import ingredient_image_url, resolve_ingredient_image_name
 
 CONTENT_TYPE_EXT = {
     "image/jpeg": "jpg",
@@ -51,7 +52,8 @@ def download_image(url: str) -> tuple[bytes, str]:
         "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
         "Referer": f"{urlparse(url).scheme}://{urlparse(url).netloc}/",
     }
-    with httpx.Client(timeout=30.0, follow_redirects=True, headers=headers) as client:
+    timeout = httpx.Timeout(12.0, connect=5.0)
+    with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers) as client:
         response = client.get(url)
         response.raise_for_status()
         content_type = response.headers.get("content-type", "image/jpeg")
@@ -84,6 +86,81 @@ def _store_or_keep(source: str, source_id: str, image_url: str) -> str:
         return image_url
 
 
+def store_ingredient_image(image_url: str | None, *, slug: str = "") -> str:
+    """材料图按英文名去重，对象键 ingredients/{slug}.ext。下载失败返回空串。"""
+    if not image_url:
+        return ""
+    if is_minio_url(image_url):
+        return image_url
+    key_id = _safe_id(slug or Path(urlparse(image_url).path).stem or "ingredient")
+    existing = find_existing_object("ingredients", key_id)
+    if existing:
+        return existing
+    try:
+        data, content_type = download_image(image_url)
+    except Exception:
+        return ""
+    if not data:
+        return ""
+    ext = _extension(image_url, content_type)
+    object_key = f"ingredients/{key_id}.{ext}"
+    try:
+        return upload_bytes(object_key, data, content_type.split(";")[0].strip())
+    except Exception:
+        return ""
+
+
+def _ingredient_slug(ingredient: dict[str, Any]) -> str:
+    name = str(ingredient.get("ingredient_name") or ingredient.get("name") or "")
+    resolved = resolve_ingredient_image_name(name, str(ingredient.get("name_en") or ""))
+    return _safe_id(resolved or name) or "ingredient"
+
+
+def attach_ingredient_minio_images(
+    recipes: list[dict[str, Any]],
+    on_progress: Callable[[str, int, int], None] | None = None,
+    should_stop: Callable[[], bool] | None = None,
+) -> list[dict[str, Any]]:
+    """同一英文材料只下一份图，写回各 recipe.ingredients[].image_url。"""
+    jobs: dict[str, str] = {}
+    for recipe in recipes:
+        for item in recipe.get("ingredients") or []:
+            remote = str(item.get("image_url") or "").strip()
+            if not remote or is_minio_url(remote):
+                continue
+            slug = _ingredient_slug(item)
+            jobs.setdefault(slug, remote)
+
+    total = len(jobs)
+    done = 0
+    resolved: dict[str, str] = {}
+    if jobs:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = {
+                pool.submit(store_ingredient_image, url, slug=slug): slug
+                for slug, url in jobs.items()
+            }
+            for future in as_completed(futures):
+                if should_stop and should_stop():
+                    break
+                slug = futures[future]
+                resolved[slug] = future.result() or ""
+                done += 1
+                if on_progress:
+                    on_progress("上传材料图到 MinIO", done, total)
+
+    for recipe in recipes:
+        for item in recipe.get("ingredients") or []:
+            remote = str(item.get("image_url") or "").strip()
+            if not remote:
+                continue
+            if is_minio_url(remote):
+                continue
+            slug = _ingredient_slug(item)
+            item["image_url"] = resolved.get(slug) or ""
+    return recipes
+
+
 def attach_minio_images(
     recipes: list[dict[str, Any]],
     on_progress: Callable[[str, int, int], None] | None = None,
@@ -103,13 +180,18 @@ def attach_minio_images(
         }
         for future in as_completed(futures):
             if should_stop and should_stop():
+                for pending in futures:
+                    pending.cancel()
                 break
             recipe = futures[future]
-            recipe["image_url"] = future.result()
+            try:
+                recipe["image_url"] = future.result()
+            except Exception:
+                pass
             done += 1
             if on_progress:
-                on_progress("上传图片到 MinIO", done, total)
-    return recipes
+                on_progress("上传配方图到 MinIO", done, total)
+    return attach_ingredient_minio_images(recipes, on_progress=on_progress, should_stop=should_stop)
 
 
 def backfill_existing(db: Session, on_progress: Callable[[str, int, int], None] | None = None) -> int:
@@ -132,5 +214,54 @@ def backfill_existing(db: Session, on_progress: Callable[[str, int, int], None] 
                 updated += 1
             if on_progress:
                 on_progress("回填已有图片", index, total)
+    db.commit()
+    return updated
+
+
+def backfill_ingredient_images(
+    db: Session,
+    on_progress: Callable[[str, int, int], None] | None = None,
+    should_stop: Callable[[], bool] | None = None,
+) -> int:
+    """给材料主表补图并上传 MinIO（不必整库重爬）。"""
+    rows = (
+        db.query(Ingredient)
+        .filter((Ingredient.image_url.is_(None)) | (Ingredient.image_url == ""))
+        .all()
+    )
+    jobs: dict[str, list[Ingredient]] = {}
+    remotes: dict[str, str] = {}
+    for row in rows:
+        remote = ingredient_image_url(row.name or "", row.name_en or "")
+        if not remote:
+            continue
+        slug = _safe_id(
+            resolve_ingredient_image_name(row.name or "", row.name_en or "")
+            or row.slug
+            or row.name
+            or "ingredient"
+        )
+        jobs.setdefault(slug, []).append(row)
+        remotes[slug] = remote
+
+    total = len(jobs)
+    updated = 0
+    done = 0
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {
+            pool.submit(store_ingredient_image, remotes[slug], slug=slug): slug for slug in jobs
+        }
+        for future in as_completed(futures):
+            if should_stop and should_stop():
+                break
+            slug = futures[future]
+            url = future.result() or ""
+            done += 1
+            if url:
+                for row in jobs[slug]:
+                    row.image_url = url
+                    updated += 1
+            if on_progress:
+                on_progress("回填材料图", done, total)
     db.commit()
     return updated

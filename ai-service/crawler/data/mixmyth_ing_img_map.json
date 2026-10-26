@@ -1,0 +1,970 @@
+[
+  {
+    "keywords": [
+      "玫瑰"
+    ],
+    "slug": "rose"
+  },
+  {
+    "keywords": [
+      "桃子",
+      "白桃",
+      "peach"
+    ],
+    "slug": "peach"
+  },
+  {
+    "keywords": [
+      "芒果",
+      "mango"
+    ],
+    "slug": "mango"
+  },
+  {
+    "keywords": [
+      "杏子",
+      "apricot",
+      "杏子利口酒",
+      "apricot brandy",
+      "apricot liqueur"
+    ],
+    "slug": "apricot-liqueur"
+  },
+  {
+    "keywords": [
+      "卡尔瓦多斯",
+      "calvados",
+      "苹果白兰地",
+      "apple brandy"
+    ],
+    "slug": "calvados"
+  },
+  {
+    "keywords": [
+      "本笃安",
+      "bénédictine",
+      "benedictine"
+    ],
+    "slug": "benedictine"
+  },
+  {
+    "keywords": [
+      "菠萝",
+      "pineapple",
+      "凤梨"
+    ],
+    "slug": "pineapple"
+  },
+  {
+    "keywords": [
+      "苹果",
+      "apple",
+      "cider"
+    ],
+    "slug": "apple"
+  },
+  {
+    "keywords": [
+      "荔枝",
+      "lychee"
+    ],
+    "slug": "lychee"
+  },
+  {
+    "keywords": [
+      "覆盆子",
+      "raspberry",
+      "树莓"
+    ],
+    "slug": "raspberry"
+  },
+  {
+    "keywords": [
+      "樱桃",
+      "cherry",
+      "马拉斯奇诺",
+      "maraschino"
+    ],
+    "slug": "cherry"
+  },
+  {
+    "keywords": [
+      "辣椒",
+      "jalapeño",
+      "jalapeno",
+      "chili",
+      "chile",
+      "辣蜂蜜",
+      "tajín",
+      "tajin"
+    ],
+    "slug": "chili"
+  },
+  {
+    "keywords": [
+      "香草",
+      "vanilla"
+    ],
+    "slug": "vanilla"
+  },
+  {
+    "keywords": [
+      "巧克力",
+      "可可",
+      "chocolate",
+      "cacao",
+      "奥利奥",
+      "oreo"
+    ],
+    "slug": "cacao"
+  },
+  {
+    "keywords": [
+      "橄榄",
+      "olive"
+    ],
+    "slug": "olive"
+  },
+  {
+    "keywords": [
+      "黄瓜",
+      "cucumber"
+    ],
+    "slug": "cucumber"
+  },
+  {
+    "keywords": [
+      "石榴汁",
+      "石榴籽",
+      "pomegranate"
+    ],
+    "slug": "pomegranate"
+  },
+  {
+    "keywords": [
+      "肉豆蔻",
+      "豆蔻",
+      "nutmeg"
+    ],
+    "slug": "nutmeg"
+  },
+  {
+    "keywords": [
+      "八角",
+      "star anise"
+    ],
+    "slug": "star-anise"
+  },
+  {
+    "keywords": [
+      "薰衣草",
+      "lavender"
+    ],
+    "slug": "lavender"
+  },
+  {
+    "keywords": [
+      "牛奶",
+      "milk"
+    ],
+    "slug": "milk"
+  },
+  {
+    "keywords": [
+      "姜片",
+      "生姜",
+      "鲜姜",
+      "ginger root"
+    ],
+    "slug": "ginger"
+  },
+  {
+    "keywords": [
+      "焦糖",
+      "caramel"
+    ],
+    "slug": "caramel"
+  },
+  {
+    "keywords": [
+      "罗勒",
+      "basil"
+    ],
+    "slug": "basil"
+  },
+  {
+    "keywords": [
+      "花椒",
+      "sichuan pepper"
+    ],
+    "slug": "sichuan-pepper"
+  },
+  {
+    "keywords": [
+      "紫苏叶",
+      "紫苏油",
+      "shiso"
+    ],
+    "slug": "shiso"
+  },
+  {
+    "keywords": [
+      "海苔",
+      "nori"
+    ],
+    "slug": "nori"
+  },
+  {
+    "keywords": [
+      "柿子",
+      "persimmon"
+    ],
+    "slug": "persimmon"
+  },
+  {
+    "keywords": [
+      "李子",
+      "plum"
+    ],
+    "slug": "plum"
+  },
+  {
+    "keywords": [
+      "金橘",
+      "kumquat"
+    ],
+    "slug": "kumquat"
+  },
+  {
+    "keywords": [
+      "蜜瓜",
+      "melon",
+      "midori"
+    ],
+    "slug": "melon"
+  },
+  {
+    "keywords": [
+      "紫罗兰",
+      "violet"
+    ],
+    "slug": "violet"
+  },
+  {
+    "keywords": [
+      "姜饼",
+      "gingerbread"
+    ],
+    "slug": "gingerbread"
+  },
+  {
+    "keywords": [
+      "番茄",
+      "tomato"
+    ],
+    "slug": "tomato"
+  },
+  {
+    "keywords": [
+      "芥末",
+      "wasabi"
+    ],
+    "slug": "wasabi"
+  },
+  {
+    "keywords": [
+      "香菜",
+      "cilantro"
+    ],
+    "slug": "cilantro"
+  },
+  {
+    "keywords": [
+      "培根",
+      "bacon"
+    ],
+    "slug": "bacon"
+  },
+  {
+    "keywords": [
+      "豆瓣酱",
+      "bean paste"
+    ],
+    "slug": "doubanjiang"
+  },
+  {
+    "keywords": [
+      "西芹",
+      "芹菜杆",
+      "celery stalk",
+      "celery stick"
+    ],
+    "slug": "celery"
+  },
+  {
+    "keywords": [
+      "黑胡椒",
+      "black pepper",
+      "胡椒"
+    ],
+    "slug": "black-pepper"
+  },
+  {
+    "keywords": [
+      "伍斯特",
+      "辣酱油",
+      "worcestershire",
+      "喼汁"
+    ],
+    "slug": "worcestershire"
+  },
+  {
+    "keywords": [
+      "塔巴斯科",
+      "tabasco",
+      "辣椒仔"
+    ],
+    "slug": "tabasco"
+  },
+  {
+    "keywords": [
+      "辣根",
+      "horseradish"
+    ],
+    "slug": "horseradish"
+  },
+  {
+    "keywords": [
+      "珍珠洋葱",
+      "腌渍洋葱",
+      "洋葱",
+      "pickled onion",
+      "pearl onion",
+      "onion"
+    ],
+    "slug": "pickled-onion"
+  },
+  {
+    "keywords": [
+      "姜汁啤酒",
+      "ginger beer",
+      "姜汁汽水",
+      "ginger ale",
+      "干姜水",
+      "姜汁"
+    ],
+    "slug": "ginger-beer"
+  },
+  {
+    "keywords": [
+      "南方舒适",
+      "southern comfort"
+    ],
+    "slug": "southern-comfort"
+  },
+  {
+    "keywords": [
+      "卡莎萨",
+      "卡查萨",
+      "cachaça",
+      "cachaca",
+      "甘蔗酒"
+    ],
+    "slug": "cachaca"
+  },
+  {
+    "keywords": [
+      "黑朗姆",
+      "dark rum",
+      "金朗姆",
+      "陈年朗姆",
+      "黑糖朗姆"
+    ],
+    "slug": "dark-rum"
+  },
+  {
+    "keywords": [
+      "白朗姆",
+      "white rum",
+      "light rum",
+      "淡朗姆",
+      "银朗姆"
+    ],
+    "slug": "white-rum"
+  },
+  {
+    "keywords": [
+      "朗姆",
+      "rum"
+    ],
+    "slug": "white-rum"
+  },
+  {
+    "keywords": [
+      "龙舌兰糖浆",
+      "agave"
+    ],
+    "slug": "agave"
+  },
+  {
+    "keywords": [
+      "梅斯卡尔",
+      "mezcal"
+    ],
+    "slug": "mezcal"
+  },
+  {
+    "keywords": [
+      "龙舌兰",
+      "tequila"
+    ],
+    "slug": "tequila"
+  },
+  {
+    "keywords": [
+      "波本",
+      "bourbon",
+      "威士忌",
+      "whiskey",
+      "whisky",
+      "黑麦",
+      "rye",
+      "苏格兰",
+      "scotch"
+    ],
+    "slug": "whiskey"
+  },
+  {
+    "keywords": [
+      "白兰地",
+      "brandy",
+      "干邑",
+      "cognac",
+      "雅文邑",
+      "armagnac",
+      "皮斯科",
+      "pisco"
+    ],
+    "slug": "brandy"
+  },
+  {
+    "keywords": [
+      "金酒",
+      "gin",
+      "琴酒",
+      "杜松子"
+    ],
+    "slug": "gin"
+  },
+  {
+    "keywords": [
+      "伏特加",
+      "vodka"
+    ],
+    "slug": "vodka"
+  },
+  {
+    "keywords": [
+      "清酒",
+      "sake"
+    ],
+    "slug": "sake"
+  },
+  {
+    "keywords": [
+      "皮姆",
+      "pimm"
+    ],
+    "slug": "pimms"
+  },
+  {
+    "keywords": [
+      "君度",
+      "cointreau",
+      "triple sec",
+      "三重",
+      "橙味利口",
+      "库拉索",
+      "curacao"
+    ],
+    "slug": "triple-sec"
+  },
+  {
+    "keywords": [
+      "蓝橙利口酒",
+      "blue curaçao",
+      "blue curacao",
+      "蓝橙"
+    ],
+    "slug": "blue-curacao"
+  },
+  {
+    "keywords": [
+      "百利甜",
+      "baileys",
+      "爱尔兰奶油",
+      "irish cream"
+    ],
+    "slug": "irish-cream"
+  },
+  {
+    "keywords": [
+      "浓缩咖啡",
+      "espresso",
+      "咖啡豆",
+      "热咖啡",
+      "现萃"
+    ],
+    "slug": "espresso"
+  },
+  {
+    "keywords": [
+      "咖啡利口",
+      "kahlua",
+      "kahlúa",
+      "甘露",
+      "coffee liqueur",
+      "咖啡酒"
+    ],
+    "slug": "coffee-liqueur"
+  },
+  {
+    "keywords": [
+      "味美思",
+      "vermouth",
+      "马天尼白",
+      "martini bianco"
+    ],
+    "slug": "vermouth"
+  },
+  {
+    "keywords": [
+      "苦精",
+      "bitters",
+      "安格斯特拉",
+      "angostura"
+    ],
+    "slug": "bitters"
+  },
+  {
+    "keywords": [
+      "苦艾酒",
+      "absinthe"
+    ],
+    "slug": "absinthe"
+  },
+  {
+    "keywords": [
+      "查特",
+      "chartreuse",
+      "夏特勒兹"
+    ],
+    "slug": "chartreuse"
+  },
+  {
+    "keywords": [
+      "阿梅尔",
+      "皮孔",
+      "amer picon",
+      "picon"
+    ],
+    "slug": "amer-picon"
+  },
+  {
+    "keywords": [
+      "阿佩罗",
+      "aperol",
+      "金巴利",
+      "campari",
+      "开胃酒",
+      "aperitif"
+    ],
+    "slug": "aperol"
+  },
+  {
+    "keywords": [
+      "杏仁利口酒",
+      "amaretto"
+    ],
+    "slug": "amaretto"
+  },
+  {
+    "keywords": [
+      "芬奈特",
+      "fernet"
+    ],
+    "slug": "fernet"
+  },
+  {
+    "keywords": [
+      "阿玛罗",
+      "amaro"
+    ],
+    "slug": "amaro"
+  },
+  {
+    "keywords": [
+      "乳香",
+      "mastiha"
+    ],
+    "slug": "mastiha"
+  },
+  {
+    "keywords": [
+      "黑莓利口酒",
+      "黑莓",
+      "blackberry",
+      "chambord",
+      "香博",
+      "crème de mûre",
+      "creme de mure"
+    ],
+    "slug": "chambord"
+  },
+  {
+    "keywords": [
+      "香蕉利口酒",
+      "香蕉",
+      "banana",
+      "crème de banane",
+      "creme de banane"
+    ],
+    "slug": "banana-liqueur"
+  },
+  {
+    "keywords": [
+      "多香果",
+      "allspice",
+      "pimento",
+      "多香果利口酒",
+      "allspice liqueur",
+      "allspice dram"
+    ],
+    "slug": "allspice-liqueur"
+  },
+  {
+    "keywords": [
+      "法勒南",
+      "falernum"
+    ],
+    "slug": "falernum"
+  },
+  {
+    "keywords": [
+      "加里安奴",
+      "galliano"
+    ],
+    "slug": "galliano"
+  },
+  {
+    "keywords": [
+      "青柠",
+      "lime",
+      "莱姆"
+    ],
+    "slug": "lime"
+  },
+  {
+    "keywords": [
+      "柠檬",
+      "lemon"
+    ],
+    "slug": "lemon"
+  },
+  {
+    "keywords": [
+      "橙汁",
+      "orange juice",
+      "鲜橙汁",
+      "橘子汁"
+    ],
+    "slug": "orange-juice"
+  },
+  {
+    "keywords": [
+      "橙皮",
+      "橙片",
+      "orange peel",
+      "orange twist",
+      "橙皮卷"
+    ],
+    "slug": "orange-peel"
+  },
+  {
+    "keywords": [
+      "黑加仑利口酒",
+      "crème de cassis",
+      "creme de cassis",
+      "cassis",
+      "blackcurrant",
+      "black currant",
+      "黑加仑"
+    ],
+    "slug": "cassis"
+  },
+  {
+    "keywords": [
+      "蔓越莓",
+      "cranberry"
+    ],
+    "slug": "cranberry"
+  },
+  {
+    "keywords": [
+      "西柚",
+      "grapefruit",
+      "葡萄柚"
+    ],
+    "slug": "grapefruit"
+  },
+  {
+    "keywords": [
+      "柚子",
+      "yuzu"
+    ],
+    "slug": "yuzu"
+  },
+  {
+    "keywords": [
+      "百香果",
+      "passion"
+    ],
+    "slug": "passion-fruit"
+  },
+  {
+    "keywords": [
+      "西瓜",
+      "watermelon"
+    ],
+    "slug": "watermelon"
+  },
+  {
+    "keywords": [
+      "草莓",
+      "strawberry"
+    ],
+    "slug": "strawberry"
+  },
+  {
+    "keywords": [
+      "薄荷",
+      "mint"
+    ],
+    "slug": "mint"
+  },
+  {
+    "keywords": [
+      "迷迭香",
+      "rosemary"
+    ],
+    "slug": "rosemary"
+  },
+  {
+    "keywords": [
+      "接骨木花",
+      "elderflower",
+      "st-germain"
+    ],
+    "slug": "elderflower"
+  },
+  {
+    "keywords": [
+      "石榴糖浆",
+      "grenadine",
+      "红石榴",
+      "石榴糖蜜"
+    ],
+    "slug": "grenadine"
+  },
+  {
+    "keywords": [
+      "蜂蜜",
+      "honey"
+    ],
+    "slug": "honey"
+  },
+  {
+    "keywords": [
+      "糖浆",
+      "syrup",
+      "蔗糖",
+      "单糖",
+      "simple",
+      "枫糖",
+      "杏仁糖",
+      "orgeat"
+    ],
+    "slug": "simple-syrup"
+  },
+  {
+    "keywords": [
+      "方糖",
+      "糖",
+      "sugar"
+    ],
+    "slug": "sugar"
+  },
+  {
+    "keywords": [
+      "全蛋",
+      "whole egg",
+      "整蛋",
+      "鸡蛋",
+      "蛋液"
+    ],
+    "slug": "whole-egg"
+  },
+  {
+    "keywords": [
+      "蛋白",
+      "egg white",
+      "蛋清"
+    ],
+    "slug": "egg-white"
+  },
+  {
+    "keywords": [
+      "蛋黄",
+      "egg yolk",
+      "yolk"
+    ],
+    "slug": "egg-yolk"
+  },
+  {
+    "keywords": [
+      "椰浆",
+      "椰奶",
+      "coconut",
+      "椰子"
+    ],
+    "slug": "coconut"
+  },
+  {
+    "keywords": [
+      "奶油",
+      "cream"
+    ],
+    "slug": "cream"
+  },
+  {
+    "keywords": [
+      "肉桂",
+      "cinnamon"
+    ],
+    "slug": "cinnamon"
+  },
+  {
+    "keywords": [
+      "丁香",
+      "clove",
+      "cloves"
+    ],
+    "slug": "cloves"
+  },
+  {
+    "keywords": [
+      "prosecco",
+      "普罗塞克",
+      "起泡酒",
+      "sparkling",
+      "香槟",
+      "champagne"
+    ],
+    "slug": "prosecco"
+  },
+  {
+    "keywords": [
+      "白葡萄酒",
+      "干白",
+      "white wine",
+      "利莱",
+      "lillet",
+      "雪莉",
+      "sherry"
+    ],
+    "slug": "white-wine"
+  },
+  {
+    "keywords": [
+      "红葡萄酒",
+      "red wine",
+      "红酒"
+    ],
+    "slug": "red-wine"
+  },
+  {
+    "keywords": [
+      "姜汁啤酒",
+      "ginger beer",
+      "姜汁汽水",
+      "ginger ale",
+      "姜汁",
+      "ginger"
+    ],
+    "slug": "ginger-beer"
+  },
+  {
+    "keywords": [
+      "世涛",
+      "黑啤",
+      "stout",
+      "porter",
+      "guinness",
+      "dark beer",
+      "啤酒"
+    ],
+    "slug": "stout"
+  },
+  {
+    "keywords": [
+      "可乐",
+      "cola",
+      "coke"
+    ],
+    "slug": "cola"
+  },
+  {
+    "keywords": [
+      "阿拉克",
+      "arak",
+      "arrack"
+    ],
+    "slug": "arak"
+  },
+  {
+    "keywords": [
+      "海盐",
+      "盐",
+      "salt"
+    ],
+    "slug": "salt"
+  },
+  {
+    "keywords": [
+      "茶",
+      "tea",
+      "抹茶",
+      "matcha"
+    ],
+    "slug": "tea"
+  },
+  {
+    "keywords": [
+      "冰",
+      "ice"
+    ],
+    "slug": "ice"
+  },
+  {
+    "keywords": [
+      "苏打",
+      "soda",
+      "气泡水",
+      "汤力",
+      "tonic",
+      "奎宁",
+      "汽水"
+    ],
+    "slug": "soda"
+  }
+]

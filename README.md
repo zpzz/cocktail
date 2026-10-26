@@ -2,24 +2,28 @@
 
 本地鸡尾酒知识库：爬取 MixMyth / TheCocktailDB 配方，图片进 MinIO，结构化数据进 PostgreSQL，BGE-M3 + pgvector 做检索，LangGraph 编排 DeepSeek 流式问答（库内配方或定制特调）。
 
-管理页：<http://127.0.0.1:8000/>
+管理页：[http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
 ---
 
 ## 技术栈
 
-| 层 | 技术 | 用途 |
-| --- | --- | --- |
-| Web | FastAPI + Jinja2 + 原生 JS | 管理页、爬取/向量化/对话接口 |
-| 编排 | LangGraph + LangChain | 意图识别、反问、检索、流式生成 |
-| LLM | DeepSeek `deepseek-chat` | 问答 / 特调文案（OpenAI 兼容接口） |
-| 生图 | 通义 `qwen-image-2.1-pro` | 仅定制特调配图（阿里云百炼） |
-| 向量 | 本地 BGE-M3 + SentenceTransformers | 1024 维稠密向量，L2 归一化 |
-| 数据库 | PostgreSQL 16 + pgvector | 配方表、chunk、HNSW 余弦检索 |
-| 对象存储 | MinIO | 配方图、定制生图；库里只存 URL |
-| 爬虫 | httpx 后台线程 | MixMyth JSON、CocktailDB 官方 API |
+
+| 层    | 技术                               | 用途                             |
+| ---- | -------------------------------- | ------------------------------ |
+| Web  | FastAPI + Jinja2 + 原生 JS         | 管理页、爬取/向量化/对话接口                |
+| 编排   | LangGraph + LangChain            | 意图识别、反问、检索、流式生成                |
+| LLM  | DeepSeek `deepseek-chat`         | 问答 / 特调文案（OpenAI 兼容接口）         |
+| 生图   | 通义 `qwen-image-2.1-pro`          | 仅定制特调配图（阿里云百炼）                 |
+| 向量   | 本地 BGE-M3 + SentenceTransformers | 1024 维稠密向量，L2 归一化              |
+| 数据库  | PostgreSQL 16 + pgvector         | 配方表、chunk、HNSW 余弦检索            |
+| 对象存储 | MinIO                            | 配方图、定制生图；库里只存 URL              |
+| 爬虫   | httpx 后台线程                       | MixMyth JSON、CocktailDB 官方 API |
+
 
 ---
+
+
 
 ## 整体数据流
 
@@ -39,7 +43,11 @@ flowchart LR
   graph --> user
 ```
 
+
+
 ---
+
+
 
 ## 爬虫技术方案
 
@@ -57,11 +65,15 @@ ingest.py         按 (source, source_id) upsert 到 kb_recipe
 （可选）rag ingest  拼 chunk → 向量化 → kb_chunk
 ```
 
+
+
 ### MixMyth
 
 - 没有公开开发者文档，走站点前端同一套 JSON：`GET https://mixmyth.com/api/recipes?page=`
 - 每页 20 条，响应里已含材料、步骤、杯型、基酒、酒精度
 - 默认间隔 `MIXMYTH_DELAY_SECONDS=0.8`，带自定义 UA
+
+
 
 ### TheCocktailDB
 
@@ -69,15 +81,21 @@ ingest.py         按 (source, source_id) upsert 到 kb_recipe
 - 按字母 / 数字列出配方，单次响应即完整详情
 - 默认间隔 `COCKTAILDB_DELAY_SECONDS=0.35`
 
+
+
 ### 去重与存储
 
 - 唯一键：`(source, source_id)`，重复爬取更新字段，不插第二行
 - 图片对象名：`{source}/{source_id}.jpg`；桶里已有则跳过下载
-- 表：`kb_recipe`、`kb_recipe_ingredient`、`crawl_run`（每次任务一条进度）
+- 表：`kb_recipe`、`kb_ingredient`（材料主数据）、`kb_recipe_ingredient`（配方用量关联）、`crawl_run`
 
 ---
 
+
+
 ## RAG 知识库与问答流程
+
+
 
 ### 入库（向量化）
 
@@ -96,11 +114,13 @@ ingest.py         按 (source, source_id) upsert 到 kb_recipe
 
 **三种意图**
 
-| 意图 | 判定 | 行为 |
-| --- | --- | --- |
-| `library` | 点名酒款（如莫吉托），或问怎么做 / 用什么酒 / 材料，且没说要定制 | 检索知识库；名称对得上或相关度 ≥ 0.55 则直接返回该配方 + MinIO 现成图，不新创、不生图 |
+
+| 意图          | 判定                                            | 行为                                                   |
+| ----------- | --------------------------------------------- | ---------------------------------------------------- |
+| `library`   | 点名酒款（如莫吉托），或问怎么做 / 用什么酒 / 材料，且没说要定制           | 检索知识库；名称对得上或相关度 ≥ 0.55 则直接返回该配方 + MinIO 现成图，不新创、不生图  |
 | `customize` | 出现「定制 / 特调 / 原创 / 专属 / 新配方」等；或上一轮已是定制、本轮只是在补槽 | 向量检索只当参考；DeepSeek 写新酒名与配方；再调 `qwen-image-2.1-pro` 生图 |
-| `clarify` | 查询过泛（「推荐一杯」「好喝」），或定制但基酒 / 口味 / 调制方式里凑不够 2 项 | 只反问 1～2 个短问题，不给完整配方、不生图 |
+| `clarify`   | 查询过泛（「推荐一杯」「好喝」），或定制但基酒 / 口味 / 调制方式里凑不够 2 项   | 只反问 1～2 个短问题，不给完整配方、不生图                              |
+
 
 **怎么分类（规则优先，模型补全）**
 
@@ -141,6 +161,8 @@ flowchart TD
   ansCus --> imgCus[通义生图写入MinIO]
 ```
 
+
+
 **多轮示例**
 
 ```mermaid
@@ -164,6 +186,10 @@ sequenceDiagram
   I-->>U: 文案加配图SSE
 ```
 
+
+
+
+
 ### 对话编排（LangGraph）
 
 `POST /api/chat/stream`（SSE）。节点：`classify` →（`clarify` | `retrieve`）→ `generate` →（定制才走）`render_image`。
@@ -180,6 +206,8 @@ flowchart LR
   render_image --> endNode
 ```
 
+
+
 会话：浏览器 `session_id` + 进程内存最近 8 轮，重启即清空。
 
 SSE：`intent` / `mode` / `sources` / `images` / `token` / `image_loading` / `image` / `image_error` / `done`。
@@ -187,6 +215,8 @@ SSE：`intent` / `mode` / `sources` / `images` / `token` / `image_loading` / `im
 示例：「莫吉托用什么酒」→ `library` + 库内图；「帮我定制一杯」→ `customize` + `clarify`；补「朗姆，清爽，摇荡」→ `customize` + 参考检索 + 生图。
 
 ---
+
+
 
 ## 目录
 
@@ -215,6 +245,8 @@ cocktails/
 
 ---
 
+
+
 ## 启动流程
 
 需要：Docker、Python 3.12、约 3GB 磁盘给 BGE-M3。密钥只写 `.env`，不要提交。
@@ -228,7 +260,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Postgres `5432`，MinIO API `9000`，控制台 <http://127.0.0.1:9001/>（默认 minioadmin / minioadmin）。
+Postgres `5432`，MinIO API `9000`，控制台 [http://127.0.0.1:9001/](http://127.0.0.1:9001/)（默认 minioadmin / minioadmin）。
 
 ### 2. Python 环境
 
@@ -238,6 +270,8 @@ python3.12 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
+
+
 
 ### 3. 本地 BGE-M3
 
@@ -261,15 +295,17 @@ EMBEDDING_MODEL=models/bge-m3
 EMBEDDING_DIM=1024
 ```
 
+
+
 ### 4. 启动 API
 
 ```bash
 cd ai-service
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_XET=1 \
-  .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+  .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-打开 <http://127.0.0.1:8000/>。进程启动时会建表并确保 MinIO bucket `cocktail-images` 存在。
+打开 [http://127.0.0.1:8000/](http://127.0.0.1:8000/)。进程启动时会建表并确保 MinIO bucket `cocktail-images` 存在。
 
 ### 5. 页面上跑通数据
 
@@ -281,21 +317,27 @@ HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_XET=1 \
 
 ---
 
+
+
 ## 常用环境变量
 
-见 [`.env.example`](.env.example)。必填对话相关：
+见 `[.env.example](.env.example)`。必填对话相关：
 
-| 变量 | 说明 |
-| --- | --- |
-| `DATABASE_URL` | `postgresql+psycopg://cocktail:cocktail@127.0.0.1:5432/cocktail` |
-| `DEEPSEEK_API_KEY` | DeepSeek 对话 |
-| `IMAGE_API_KEY` | 百炼，模型 `qwen-image-2.1-pro` |
-| `IMAGE_BASE_URL` | 默认 `https://dashscope.aliyuncs.com/compatible-mode/v1`（北京；免费额度仅该地域） |
-| `EMBEDDING_MODEL` | 相对 `ai-service/` 的本地目录，如 `models/bge-m3` |
+
+| 变量                 | 说明                                                                  |
+| ------------------ | ------------------------------------------------------------------- |
+| `DATABASE_URL`     | `postgresql+psycopg://cocktail:cocktail@127.0.0.1:5432/cocktail`    |
+| `DEEPSEEK_API_KEY` | DeepSeek 对话                                                         |
+| `IMAGE_API_KEY`    | 百炼，模型 `qwen-image-2.1-pro`                                          |
+| `IMAGE_BASE_URL`   | 默认 `https://dashscope.aliyuncs.com/compatible-mode/v1`（北京；免费额度仅该地域） |
+| `EMBEDDING_MODEL`  | 相对 `ai-service/` 的本地目录，如 `models/bge-m3`                            |
+
 
 定制生图依赖百炼账号可用（欠费时即使还有免费额度也会被拒绝）。免费额度只对华北 2（北京）生效。
 
 ---
+
+
 
 ## APP（Expo + React Native）
 
@@ -319,23 +361,26 @@ pnpm app:android    # 需 Android Studio / 模拟器
 pnpm app:web        # 浏览器预览（仅开发，不是产品形态）
 ```
 
+
+
 ### 怎么调试
 
-1. **真机最快：Expo Go**  
-   iOS App Store / Android 装 [Expo Go](https://expo.dev/go)。电脑和手机同一 Wi-Fi，扫 `pnpm app` 的二维码即可。改 JS 保存后热更新。  
+1. **真机最快：Expo Go**
+  iOS App Store / Android 装 [Expo Go](https://expo.dev/go)。电脑和手机同一 Wi-Fi，扫 `pnpm app` 的二维码即可。改 JS 保存后热更新。  
    iOS 模拟器也可用：`pnpm app:ios`（需 Xcode）。
-
-2. **Chrome / Cursor 调试 JS**  
-   Metro 启动后按 `j` 打开 React Native DevTools，可断点、看组件树。摇一摇设备（模拟器 `Cmd+D` / Android `Cmd+M`）打开开发菜单。
-
-3. **什么时候不要用 Expo Go**  
-   接入摄像头、本地构建原生模块、或要打 TestFlight / 商店包时，再执行 `npx expo prebuild` 生成 `ios/`、`android/`，用 `npx expo run:ios` / `run:android`。MVP 骨架阶段不需要这一步。
+2. **Chrome / Cursor 调试 JS**
+  Metro 启动后按 `j` 打开 React Native DevTools，可断点、看组件树。摇一摇设备（模拟器 `Cmd+D` / Android `Cmd+M`）打开开发菜单。
+3. **什么时候不要用 Expo Go**
+  接入摄像头、本地构建原生模块、或要打 TestFlight / 商店包时，再执行 `npx expo prebuild` 生成 `ios/`、`android/`，用 `npx expo run:ios` / `run:android`。MVP 骨架阶段不需要这一步。
 
 真机访问本机 Java/Python API 时，不要用 `localhost`，用电脑局域网 IP（例如 `http://192.168.x.x:8000`）。
 
 ---
 
+
+
 ## 相关文档
 
 - [架构设计.md](架构设计.md) — 完整产品架构规划（含后续 APP / Java）
 - [AI鸡尾酒需求文档.md](AI鸡尾酒需求文档.md) — 需求原文
+

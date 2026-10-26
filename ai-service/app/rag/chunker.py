@@ -30,8 +30,10 @@ def _tags(recipe: Recipe) -> str:
 def _ingredients(recipe: Recipe) -> str:
     parts = []
     for item in recipe.ingredients:
-        amount = f"{item.amount:g}" if item.amount is not None else ""
-        parts.append(f"{item.ingredient_name} {amount}{item.unit or ''}".strip())
+        master = item.ingredient
+        name = (master.name if master else "") or ""
+        amount = f"{float(item.amount):g}" if item.amount is not None else ""
+        parts.append(f"{name} {amount}{item.unit or ''}".strip())
     return "；".join(parts)
 
 

@@ -2,9 +2,10 @@ export type IngredientCategory =
   | '基酒'
   | '利口酒'
   | '糖浆'
-  | '果汁'
+  | '果汁/软饮'
+  | '新鲜材料'
   | '苦精'
-  | '鲜料';
+  | '装饰';
 
 export type CabinetItem = {
   id: number;

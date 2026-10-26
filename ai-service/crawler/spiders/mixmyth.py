@@ -43,9 +43,8 @@ def _ingredient_rows(raw_items: list[Any] | None, names_en: list[Any] | None = N
         english = ""
         if names_en and index < len(names_en) and names_en[index]:
             english = str(names_en[index]).strip()
-        if english and english.lower() not in name.lower():
-            name = f"{name} ({english})"
-        rows.append({"name": name, "amount_raw": amount_raw})
+        # 中英文分开传，避免「朗姆酒 (Rum (optional))」嵌套括号污染展示名
+        rows.append({"name": name, "name_en": english, "amount_raw": amount_raw})
     return rows
 
 

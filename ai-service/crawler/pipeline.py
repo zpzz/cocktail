@@ -7,6 +7,8 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from crawler.ingredient_images import ingredient_image_url
+
 METHOD_LABELS = {
     "shake": "Shake 摇荡",
     "stir": "Stir 搅拌",
@@ -145,19 +147,26 @@ def canonical_recipe(
     image_url: str = "",
     ingredients: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """输出字段与 kb_recipe / kb_recipe_ingredient 对齐。"""
+    """输出字段与 kb_recipe + kb_ingredient / kb_recipe_ingredient 对齐。"""
     tags = [str(tag).strip() for tag in (flavor_tags or []) if str(tag).strip()]
     parsed_ingredients = []
     for index, item in enumerate(ingredients or [], start=1):
         amount, unit = parse_amount(str(item.get("amount_raw") or item.get("amount") or ""))
         if item.get("unit"):
             unit = str(item["unit"])[:16]
+        ingredient_name = str(item.get("name") or "").strip()[:128]
+        name_en = str(item.get("name_en") or "").strip()
+        image_url = str(item.get("image_url") or "").strip()
+        if not image_url:
+            image_url = ingredient_image_url(ingredient_name, name_en, source=source)
         parsed_ingredients.append(
             {
-                "ingredient_name": str(item.get("name") or "").strip()[:128],
+                "ingredient_name": ingredient_name,
+                "name_en": name_en[:128],
                 "amount": amount,
                 "unit": unit,
                 "order_index": item.get("order_index") or index,
+                "image_url": image_url,
             }
         )
     parsed_ingredients = [row for row in parsed_ingredients if row["ingredient_name"]]

@@ -120,6 +120,63 @@ dialog::backdrop { background: rgba(0,0,0,.55); }
 .specs span { color: var(--muted); font-size: 12px; }
 .desc { color: var(--muted); line-height: 1.6; }
 .ing { margin: 8px 0; padding-left: 18px; }
+.ing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px 8px;
+  margin: 10px 0 18px;
+}
+.ing-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+.ing-img {
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  min-height: 50px;
+  max-width: 50px;
+  max-height: 50px;
+  flex: 0 0 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #10141b;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+}
+.modal .ing-img img,
+.ing-img img {
+  width: 50px !important;
+  height: 50px !important;
+  max-width: 50px !important;
+  max-height: 50px !important;
+  object-fit: cover;
+  display: block;
+}
+.ing-ph {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #1a2030, #0d1118);
+}
+.ing-name {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #e8edf5;
+  word-break: break-word;
+}
+.ing-amt {
+  font-size: 11px;
+  color: var(--accent, #d4a017);
+}
+.ing-cat {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.2;
+}
 pre { white-space: pre-wrap; color: #d7deea; font-family: inherit; }
 .chat-panel { display: flex; flex-direction: column; gap: 12px; }
 .chat-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
