@@ -35,7 +35,7 @@ import jakarta.validation.Valid;
  */
 @Tag(name = "调配工作台")
 @RestController
-@RequestMapping("/api/workbench")
+@RequestMapping("/api/cocktail/workbench")
 public class WorkbenchController {
 
     private final WorkbenchService workbenchService;

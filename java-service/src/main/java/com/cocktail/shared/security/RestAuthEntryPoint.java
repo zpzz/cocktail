@@ -56,7 +56,7 @@ public class RestAuthEntryPoint implements AuthenticationEntryPoint, AccessDenie
                 || !auth.isAuthenticated()
                 || auth instanceof AnonymousAuthenticationToken;
         if (anonymous) {
-            write(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "未登录或 Token 无效，请先调用 /api/auth/login");
+            write(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "未登录或 Token 无效，请先调用 /api/cocktail/auth/login");
         } else {
             write(response, HttpStatus.FORBIDDEN, "FORBIDDEN", "无权限访问该接口");
         }

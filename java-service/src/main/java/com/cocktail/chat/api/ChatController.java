@@ -27,11 +27,11 @@ import jakarta.validation.Valid;
  * <p>
  * 使用 {@link SseEmitter} 走 Servlet 安全链，JWT / Cookie 才能生效。
  */
-@Tag(name = "AI 对话", description = "需登录。先 POST /api/auth/login，再调本接口；或右上角 Authorize 填 accessToken")
+@Tag(name = "AI 对话", description = "需登录。先 POST /api/cocktail/auth/login，再调本接口；或右上角 Authorize 填 accessToken")
 @SecurityRequirement(name = "bearerAuth")
 @SecurityRequirement(name = "cookieAuth")
 @RestController
-@RequestMapping("/api/chat")
+@RequestMapping("/api/cocktail/chat")
 public class ChatController {
 
     private final AiServiceClient aiServiceClient;

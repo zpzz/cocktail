@@ -26,7 +26,7 @@ import jakarta.validation.Valid;
  */
 @Tag(name = "认证", description = "注册 / 登录 / 刷新 / 退出；登录会写入 Cookie ACCESS_TOKEN 便于 Swagger 调试")
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/cocktail/auth")
 public class AuthController {
 
     private final AuthService authService;

@@ -17,7 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 /** 材料分类与搜索，GET 可匿名。 */
 @Tag(name = "材料目录", description = "只读知识库 kb_ingredient，供酒柜加料与工作台选料")
 @RestController
-@RequestMapping("/api/ingredients")
+@RequestMapping("/api/cocktail/ingredients")
 public class IngredientController {
 
     private final IngredientService ingredientService;

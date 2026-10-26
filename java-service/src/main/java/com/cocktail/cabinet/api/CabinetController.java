@@ -32,7 +32,7 @@ import jakarta.validation.Valid;
 /** 酒柜 HTTP 入口，需登录。 */
 @Tag(name = "酒柜", description = "我的库存 CRUD、拍照识别加料、按库存生成酒单")
 @RestController
-@RequestMapping("/api/cabinet")
+@RequestMapping("/api/cocktail/cabinet")
 public class CabinetController {
 
     private final CabinetService cabinetService;

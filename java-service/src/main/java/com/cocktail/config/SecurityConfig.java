@@ -58,10 +58,10 @@ public class SecurityConfig {
                                 "/swagger-ui/index.html",
                                 "/swagger-auth.js"
                         ).permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/cocktail/auth/**").permitAll()
                         // 材料搜索、杯型/技法枚举：未登录也能浏览目录
-                        .requestMatchers(HttpMethod.GET, "/api/ingredients/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/workbench/glasses", "/api/workbench/options").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cocktail/ingredients/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cocktail/workbench/glasses", "/api/cocktail/workbench/options").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

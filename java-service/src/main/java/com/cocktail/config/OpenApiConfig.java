@@ -15,7 +15,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 /**
  * Swagger / OpenAPI 文档。
  * <p>
- * 推荐调试方式：在 Swagger 里调 {@code POST /api/auth/login} → 响应会 Set-Cookie
+ * 推荐调试方式：在 Swagger 里调 {@code POST /api/cocktail/auth/login} → 响应会 Set-Cookie
  * {@code ACCESS_TOKEN} → 后续 Try it out 同源自动带 Cookie，无需每次粘贴 Token。
  * <p>
  * 也可点右上角 Authorize，用 Bearer 粘贴 accessToken（适合非浏览器客户端对照）。
@@ -35,10 +35,10 @@ public class OpenApiConfig {
                                 业务后端：认证 / 酒柜 / 材料 / 工作台 / 对话代理。
 
                                 **Swagger 登录用法**
-                                1. 先调 `POST /api/auth/register`（如无账号）
-                                2. 再调 `POST /api/auth/login`
+                                1. 先调 `POST /api/cocktail/auth/register`（如无账号）
+                                2. 再调 `POST /api/cocktail/auth/login`
                                 3. 浏览器会收到 Cookie `ACCESS_TOKEN`，后续接口自动带上
-                                4. 需要退出时调 `POST /api/auth/logout`
+                                4. 需要退出时调 `POST /api/cocktail/auth/logout`
 
                                 也可用右上角 Authorize → Bearer JWT（粘贴登录返回的 accessToken）。
                                 """)
