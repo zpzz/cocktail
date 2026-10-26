@@ -39,14 +39,26 @@ public class AiServiceClient {
         this.ai = properties.ai();
     }
 
-    /** 首页对话 SSE */
+    /** 首页对话 SSE（对外契约 thread_id/user_input → Python session_id/message） */
     public Flux<String> streamChat(Map<String, Object> body) {
-        return stream(ai.chatPath(), body);
+        return stream(ai.chatPath(), toPythonChatBody(body));
     }
 
     /** 追问续聊 SSE */
     public Flux<String> streamResume(Map<String, Object> body) {
-        return stream(ai.resumePath(), body);
+        return stream(ai.resumePath(), toPythonChatBody(body));
+    }
+
+    /** 适配当前 Python /api/ai/chat/stream 入参 */
+    private static Map<String, Object> toPythonChatBody(Map<String, Object> body) {
+        Map<String, Object> python = new HashMap<>();
+        Object threadId = body.get("thread_id");
+        Object userInput = body.get("user_input");
+        python.put("session_id", threadId == null || String.valueOf(threadId).isBlank()
+                ? "default"
+                : String.valueOf(threadId));
+        python.put("message", userInput == null ? "" : String.valueOf(userInput));
+        return python;
     }
 
     /** 工作台生成特调 SSE */

@@ -23,6 +23,10 @@ import jakarta.servlet.http.HttpServletResponse;
  *   <li>{@code Authorization: Bearer <token>}（APP / 手动 Authorize）</li>
  *   <li>Cookie {@code ACCESS_TOKEN}（Swagger 登录后浏览器自动带）</li>
  * </ol>
+ * <p>
+ * SSE（{@code SseEmitter}）会走 ASYNC 二次派发；默认 {@link OncePerRequestFilter}
+ * 会跳过 async，导致 SecurityContext 丢失、对话接口固定 401。因此 async/error
+ * 派发也要重新解析 Token。
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -33,6 +37,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public JwtAuthenticationFilter(JwtService jwtService, AuthCookieSupport authCookieSupport) {
         this.jwtService = jwtService;
         this.authCookieSupport = authCookieSupport;
+    }
+
+    /** SSE / DeferredResult 异步派发时仍需带上登录态 */
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
+    @Override
+    protected boolean shouldNotFilterErrorDispatch() {
+        return false;
     }
 
     @Override

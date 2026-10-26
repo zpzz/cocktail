@@ -55,8 +55,9 @@ cocktail:
     refresh-ttl-days: 14
   ai:
     base-url: ${AI_SERVICE_URL:http://127.0.0.1:8000}
-    chat-path: /api/ai/chat
-    resume-path: /api/ai/chat/resume
+    # 与现网 Python 对齐；契约稳定后可改为 /api/ai/chat
+    chat-path: /api/ai/chat/stream
+    resume-path: /api/ai/chat/stream
     recognize-path: /api/ai/ingredients/recognize
     cabinet-menu-path: /api/ai/cabinet/menu
     workbench-analyze-path: /api/ai/workbench/analyze
