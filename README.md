@@ -226,8 +226,8 @@ cocktails/
 │   ├── apps/app-rn/            Expo + React Native APP（首页 / 工作台 / 酒柜 / 我的）
 │   ├── packages/shared/        零平台依赖：类型、API 路径、HttpClient、Redux
 │   └── pnpm-workspace.yaml
-├── docker-compose.yml          本地：Postgres(pgvector) + MinIO
-├── docker-compose.deploy.yml   Linux 部署：Postgres + MinIO + ai-service + java-service
+├── docker-compose.yml          基础设施：Postgres(pgvector) + MinIO
+├── docker-compose.deploy.yml   应用部署：仅 ai-service + java-service
 ├── docker/postgres/init.sql    CREATE EXTENSION vector
 ├── .env.example
 ├── ai-service/
@@ -326,7 +326,7 @@ HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_XET=1 \
 
 ## Linux 后端部署（Docker Compose）
 
-用 `docker-compose.deploy.yml` 一次拉起 **Postgres + MinIO + ai-service（Python）+ java-service（Java）**。本地开发仍用上面的 `docker compose up -d`（只起基础设施）。
+分两步：`docker-compose.yml` 只管 **Postgres + MinIO**；`docker-compose.deploy.yml` 只部署 **ai-service + java-service**（不重复编排数据库和对象存储）。
 
 ### 1. 服务器准备
 
@@ -339,11 +339,13 @@ docker compose version
 
 防火墙 / 安全组放行：
 
-| 端口 | 服务 |
-| ---- | ---- |
-| `8080` | Java API |
-| `8000` | Python AI / 管理页 |
+
+| 端口              | 服务              |
+| --------------- | --------------- |
+| `8080`          | Java API        |
+| `8000`          | Python AI / 管理页 |
 | `9000` / `9001` | MinIO API / 控制台 |
+
 
 `5432`（Postgres）建议仅内网访问，不要对公网开放。
 
@@ -358,23 +360,29 @@ cp .env.example .env
 
 `.env` 至少修改：
 
-| 变量 | 说明 |
-| ---- | ---- |
-| `DEEPSEEK_API_KEY` / `IMAGE_API_KEY` | 对话与生图密钥 |
-| `WECHAT_MP_APPID` / `WECHAT_MP_SECRET` | 小程序登录（需要时） |
-| `JWT_SECRET` | 改成足够长的随机串 |
-| `MINIO_PUBLIC_BASE` | **必改**：`http://公网IP或域名:9000`，前端/小程序靠它拉图片 |
-| `POSTGRES_PASSWORD` / `MINIO_ROOT_*` | 生产勿用默认口令 |
 
-容器内会自动把 `POSTGRES_HOST`、`MINIO_HOST` 等覆盖为服务名（`postgres` / `minio`），无需把 `.env` 里的 `127.0.0.1` 改成服务名；**只有** `MINIO_PUBLIC_BASE` 必须填外网可达地址。
+| 变量                                     | 说明                                       |
+| -------------------------------------- | ---------------------------------------- |
+| `DEEPSEEK_API_KEY` / `IMAGE_API_KEY`   | 对话与生图密钥                                  |
+| `WECHAT_MP_APPID` / `WECHAT_MP_SECRET` | 小程序登录（需要时）                               |
+| `JWT_SECRET`                           | 改成足够长的随机串                                |
+| `MINIO_PUBLIC_BASE`                    | **必改**：`http://公网IP或域名:9000`，前端/小程序靠它拉图片 |
+| `POSTGRES_PASSWORD` / `MINIO_ROOT_*`   | 生产勿用默认口令                                 |
 
-### 3. 构建并启动
+
+应用容器会加入基础设施网络 `cocktails_default`，内网用服务名 `postgres` / `minio`；**只有** `MINIO_PUBLIC_BASE` 必须填外网可达地址。
+
+### 3. 先起基础设施，再起应用
 
 ```bash
+# ① Postgres + MinIO（已有可跳过）
+docker compose up -d
+
+# ② Python + Java
 docker compose -f docker-compose.deploy.yml up -d --build
 ```
 
-首次构建较久（`ai-service` 镜像依赖较大）。
+首次构建较久（`ai-service` 镜像依赖较大）。若报网络 `cocktails_default` 不存在，说明第 ① 步还没起来。
 
 ### 4. 检查
 
@@ -384,11 +392,13 @@ curl http://127.0.0.1:8080/actuator/health   # Java
 curl http://127.0.0.1:8000/docs              # Python
 ```
 
-| 入口 | 地址 |
-| ---- | ---- |
+
+| 入口                 | 地址                                 |
+| ------------------ | ---------------------------------- |
 | Java API / Swagger | `http://公网IP:8080/swagger-ui.html` |
-| Python 管理页 | `http://公网IP:8000/` |
-| MinIO 控制台 | `http://公网IP:9001` |
+| Python 管理页         | `http://公网IP:8000/`                |
+| MinIO 控制台          | `http://公网IP:9001`                 |
+
 
 小程序 / APP 的 API 基址指向 `http://公网IP:8080`（或你的域名）。
 
@@ -403,7 +413,7 @@ docker compose -f docker-compose.deploy.yml logs -f ai-service
 docker compose -f docker-compose.deploy.yml up -d --build java-service
 docker compose -f docker-compose.deploy.yml up -d --build ai-service
 
-# 停止（数据卷默认保留）
+# 只停应用（不影响 Postgres / MinIO）
 docker compose -f docker-compose.deploy.yml down
 ```
 
