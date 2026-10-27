@@ -45,6 +45,12 @@ public class SavedCustomService {
         row.setGarnishesJson(toJson(request.garnishes() == null ? List.of() : request.garnishes()));
         row.setFeeling(nullToEmpty(request.feeling()));
         row.setFlavorSummary(nullToEmpty(request.flavorSummary()));
+        row.setAbvRange(nullToEmpty(request.abvRange()));
+        row.setDifficulty(nullToEmpty(request.difficulty()));
+        row.setTaste(nullToEmpty(request.taste()));
+        row.setFlavorProfileJson(request.flavorProfile() == null
+                ? null
+                : toJson(request.flavorProfile()));
         row.setIngredientsJson(toJson(request.ingredients() == null ? List.of() : request.ingredients()));
         row.setStepsJson(toJson(request.steps() == null ? List.of() : request.steps()));
         row.setInstructions(nullToEmpty(request.instructions()));
@@ -98,6 +104,10 @@ public class SavedCustomService {
                 fromStringList(row.getGarnishesJson()),
                 row.getFeeling(),
                 row.getFlavorSummary(),
+                blankToNull(row.getAbvRange()),
+                blankToNull(row.getDifficulty()),
+                blankToNull(row.getTaste()),
+                fromMap(row.getFlavorProfileJson()),
                 fromMapList(row.getIngredientsJson()),
                 fromMapList(row.getStepsJson()),
                 row.getInstructions(),
@@ -105,6 +115,18 @@ public class SavedCustomService {
                 row.getWorkbenchSessionId(),
                 row.getCreatedAt()
         );
+    }
+
+    private Map<String, Object> fromMap(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(raw, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private String toJson(Object value) {

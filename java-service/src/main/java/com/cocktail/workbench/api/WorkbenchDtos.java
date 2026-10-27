@@ -136,10 +136,22 @@ public final class WorkbenchDtos {
     ) {
     }
 
+    @Schema(description = "风味雷达六维（0~1）")
+    public record FlavorProfile(
+            @Schema(description = "甜度") Double sweetness,
+            @Schema(description = "酒精感") Double alcohol,
+            @Schema(description = "酸度") Double sourness,
+            @Schema(description = "香气") Double aroma,
+            @Schema(description = "能量") Double energy,
+            @Schema(description = "难度") Double difficulty
+    ) {
+    }
+
     @Schema(description = "成杯可行性分析结果")
     public record AnalyzeResponse(
             @Schema(description = "是否可行") Boolean feasible,
             @Schema(description = "风味摘要") String flavorSummary,
+            @Schema(description = "风味雷达六维") FlavorProfile flavorProfile,
             @Schema(description = "冲突提示列表") List<Map<String, Object>> conflicts,
             @Schema(description = "建议") List<String> suggestions
     ) {

@@ -15,6 +15,7 @@ import { useDispatch } from 'react-redux';
 import { authService } from '../api';
 import { savePersistedAuth } from '../auth/storage';
 import type { AppDispatch } from '../store';
+import { colors } from '../theme';
 
 type Mode = 'login' | 'register';
 
@@ -76,7 +77,8 @@ export function AuthScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.brand}>Cocktail</Text>
+        <Text style={styles.brand}>酒方</Text>
+        <Text style={styles.brandEn}>JIUFANG</Text>
         <Text style={styles.subtitle}>
           {mode === 'login' ? '登录后开始对话与酒柜管理' : '创建账号，解锁个性化推荐'}
         </Text>
@@ -87,7 +89,7 @@ export function AuthScreen() {
             value={username}
             onChangeText={setUsername}
             placeholder="用户名"
-            placeholderTextColor="#8B8178"
+            placeholderTextColor={colors.muted}
             autoCapitalize="none"
             autoCorrect={false}
             editable={!busy}
@@ -98,7 +100,7 @@ export function AuthScreen() {
               value={nickname}
               onChangeText={setNickname}
               placeholder="昵称（可选）"
-              placeholderTextColor="#8B8178"
+              placeholderTextColor={colors.muted}
               editable={!busy}
             />
           ) : null}
@@ -107,7 +109,7 @@ export function AuthScreen() {
             value={password}
             onChangeText={setPassword}
             placeholder="密码"
-            placeholderTextColor="#8B8178"
+            placeholderTextColor={colors.muted}
             secureTextEntry
             editable={!busy}
             onSubmitEditing={submit}
@@ -122,7 +124,7 @@ export function AuthScreen() {
             disabled={busy}
           >
             {busy ? (
-              <ActivityIndicator color="#1C1816" />
+              <ActivityIndicator color={colors.text} />
             ) : (
               <Text style={styles.primaryText}>
                 {mode === 'login' ? '登录' : '注册并登录'}
@@ -152,7 +154,7 @@ export function AuthScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#14110F',
+    backgroundColor: colors.background,
   },
   scroll: {
     flexGrow: 1,
@@ -161,14 +163,21 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
   },
   brand: {
-    color: '#C9A227',
+    color: colors.primary,
     fontSize: 40,
     fontWeight: '700',
     letterSpacing: 1,
   },
+  brandEn: {
+    color: colors.muted,
+    fontSize: 12,
+    letterSpacing: 2,
+    marginTop: 4,
+    fontWeight: '600',
+  },
   subtitle: {
     marginTop: 10,
-    color: '#C4B8AC',
+    color: colors.muted,
     fontSize: 16,
     lineHeight: 24,
   },
@@ -180,25 +189,25 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     paddingHorizontal: 14,
-    color: '#F4EDE4',
-    backgroundColor: '#1C1816',
+    color: colors.text,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: colors.border,
   },
   error: {
-    color: '#E07070',
+    color: colors.primary,
     fontSize: 14,
   },
   primary: {
     marginTop: 8,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#C9A227',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryText: {
-    color: '#1C1816',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -207,7 +216,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   switchText: {
-    color: '#C9A227',
+    color: colors.primary,
     fontSize: 14,
   },
   disabled: {

@@ -180,6 +180,19 @@ export type RecognizeResponse = {
   keywords?: string[];
 };
 
+/** 知识库配方摘要（首页今日推荐等） */
+export type RecipeSummary = {
+  id: number;
+  name: string;
+  nameEn?: string | null;
+  category?: string | null;
+  baseSpirit?: string | null;
+  glass?: string | null;
+  method?: string | null;
+  flavorTags?: string[] | null;
+  imageUrl?: string | null;
+};
+
 export type MenuIngredient = {
   name: string;
   nameEn?: string;
@@ -297,9 +310,20 @@ export type WorkbenchSessionPatch = {
   feeling?: string;
 };
 
+/** 风味雷达六维，取值 0~1 */
+export type WorkbenchFlavorProfile = {
+  sweetness?: number | null;
+  alcohol?: number | null;
+  sourness?: number | null;
+  aroma?: number | null;
+  energy?: number | null;
+  difficulty?: number | null;
+};
+
 export type WorkbenchAnalyze = {
   feasible: boolean | null;
   flavorSummary?: string | null;
+  flavorProfile?: WorkbenchFlavorProfile | null;
   conflicts: { level?: string; message?: string }[];
   suggestions: string[];
 };
@@ -322,6 +346,15 @@ export type WorkbenchRecipe = {
   feeling?: string;
   flavorSummary?: string;
   flavor_summary?: string;
+  /** 酒精度展示，如「约 12%」 */
+  abvRange?: string;
+  abv_range?: string;
+  /** 难度文案：简单 / 中等 / 进阶 */
+  difficulty?: string;
+  /** 口感标签，如「清爽酸甜」 */
+  taste?: string;
+  flavorProfile?: WorkbenchFlavorProfile | null;
+  flavor_profile?: WorkbenchFlavorProfile | null;
   ingredients: MenuIngredient[];
   steps: WorkbenchRecipeStep[];
   instructions?: string;
@@ -348,6 +381,10 @@ export type CustomDetail = {
   garnishes?: string[];
   feeling?: string;
   flavorSummary?: string;
+  abvRange?: string | null;
+  difficulty?: string | null;
+  taste?: string | null;
+  flavorProfile?: WorkbenchFlavorProfile | null;
   ingredients: MenuIngredient[];
   steps: WorkbenchRecipeStep[];
   instructions?: string;

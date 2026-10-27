@@ -63,24 +63,24 @@ export function ProfileScreen() {
 
         <Pressable style={styles.menuEntry} onPress={() => setMenusVisible(true)}>
           <View style={styles.menuIcon}>
-            <Ionicons name="book-outline" size={20} color="#C9A227" />
+            <Ionicons name="book-outline" size={20} color="#F34B2F" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.menuEntryTitle}>酒单</Text>
             <Text style={styles.menuEntrySub}>用库存生成并保存的配方单</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#6F675F" />
+          <Ionicons name="chevron-forward" size={18} color="#A0A0AA" />
         </Pressable>
 
         <Pressable style={styles.menuEntry} onPress={() => setCustomsVisible(true)}>
           <View style={styles.menuIcon}>
-            <Ionicons name="sparkles-outline" size={20} color="#C9A227" />
+            <Ionicons name="sparkles-outline" size={20} color="#F34B2F" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.menuEntryTitle}>特调</Text>
             <Text style={styles.menuEntrySub}>工作台生成的专属配方卡片</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#6F675F" />
+          <Ionicons name="chevron-forward" size={18} color="#A0A0AA" />
         </Pressable>
 
         <Pressable
@@ -90,7 +90,7 @@ export function ProfileScreen() {
           disabled={busy}
         >
           {busy ? (
-            <ActivityIndicator color="#F4EDE4" />
+            <ActivityIndicator color="#F5F5F5" />
           ) : (
             <Text style={styles.logoutText}>退出登录</Text>
           )}
@@ -109,7 +109,7 @@ export function ProfileScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#14110F',
+    backgroundColor: '#111111',
   },
   scroll: {
     paddingHorizontal: 20,
@@ -119,20 +119,20 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   kicker: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   title: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 28,
     fontWeight: '700',
     marginTop: 4,
   },
   sub: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 13,
     marginTop: 4,
   },
@@ -142,38 +142,38 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     marginBottom: 28,
   },
   avatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#2A2420',
+    backgroundColor: '#303034',
     borderWidth: 1,
-    borderColor: '#C9A22755',
+    borderColor: '#F34B2F55',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 22,
     fontWeight: '700',
   },
   identityName: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 17,
     fontWeight: '600',
   },
   identityMeta: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 13,
     marginTop: 3,
   },
   sectionLabel: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.6,
@@ -187,25 +187,25 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 14,
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
   },
   menuIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#0A0908',
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuEntryTitle: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 16,
     fontWeight: '600',
   },
   menuEntrySub: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 12,
     marginTop: 2,
   },

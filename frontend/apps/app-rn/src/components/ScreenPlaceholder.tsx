@@ -17,18 +17,18 @@ export function ScreenPlaceholder({ title, description }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#14110F',
+    backgroundColor: '#111111',
     paddingHorizontal: 24,
     justifyContent: 'center',
   },
   title: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 28,
     fontWeight: '600',
     marginBottom: 12,
   },
   description: {
-    color: '#C4B8AC',
+    color: '#A0A0AA',
     fontSize: 16,
     lineHeight: 24,
   },

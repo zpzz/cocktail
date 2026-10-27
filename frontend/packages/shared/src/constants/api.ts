@@ -17,4 +17,5 @@ export const API_PATHS = {
   workbenchSessions: `${API_PREFIX}/workbench/sessions`,
   ingredientsCategories: `${API_PREFIX}/ingredients/categories`,
   ingredientsSearch: `${API_PREFIX}/ingredients/search`,
+  recipesRandom: `${API_PREFIX}/recipes/random`,
 } as const;

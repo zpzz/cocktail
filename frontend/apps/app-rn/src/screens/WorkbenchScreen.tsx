@@ -8,12 +8,10 @@ import type {
   WorkbenchRecipe,
   WorkbenchSession,
 } from '@cocktail/shared';
-import { Ionicons } from '@expo/vector-icons';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -23,11 +21,26 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resolveMediaUrl } from '../adapters/apiBase';
 import { customService, ingredientService, workbenchService } from '../api';
+import { appAlert } from '../components/AppDialog';
+import { FlavorRadarChart } from '../components/FlavorRadarChart';
+import { RecipeDetailView } from '../components/RecipeDetailView';
+import { WorkbenchStepIndicator } from '../components/WorkbenchStepIndicator';
+import { colors } from '../theme';
+import { GLASS_ICONS } from '../constants/glassIcons';
+import { ICE_ICONS, METHOD_ICONS } from '../constants/workbenchOptionIcons';
+import { axesFromAnalyze, axesToArray } from '../utils/flavorProfile';
+
+const GLASS_COLS = 2;
+const GLASS_GAP = 10;
+const GLASS_PAD = 20;
+
+const STEPS = ['杯型', '材料', '调配'] as const;
 
 const GRID_GAP = 10;
 const GRID_PAD = 16;
@@ -37,8 +50,13 @@ const GRID_ITEM_W =
   GRID_COLS;
 
 export function WorkbenchScreen() {
+  const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
+  const glassCardWidth = useMemo(
+    () =>
+      (windowWidth - GLASS_PAD * 2 - GLASS_GAP * (GLASS_COLS - 1)) / GLASS_COLS,
+    [windowWidth],
+  );
   const [session, setSession] = useState<WorkbenchSession | null>(null);
   const [glasses, setGlasses] = useState<WorkbenchGlass[]>([]);
   const [options, setOptions] = useState<WorkbenchOptions | null>(null);
@@ -59,6 +77,12 @@ export function WorkbenchScreen() {
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [pickerCategory, setPickerCategory] = useState<string | undefined>();
   const [pickerSubCategory, setPickerSubCategory] = useState<string | undefined>();
+  /** 弹窗内暂存勾选，点「确认添加」才一次写入会话 */
+  const [pickerDraft, setPickerDraft] = useState<
+    Map<number, { ingredientId: number; name: string; amount: number; unit: string }>
+  >(new Map());
+  const [currentStep, setCurrentStep] = useState(0);
+  const [radarSize, setRadarSize] = useState(112);
   const abortRef = useRef<AbortController | null>(null);
 
   const pickerCategoryNode = useMemo(
@@ -66,10 +90,7 @@ export function WorkbenchScreen() {
     [categories, pickerCategory],
   );
 
-  const selectedIds = useMemo(
-    () => new Set((session?.ingredients ?? []).map((x) => x.ingredientId)),
-    [session?.ingredients],
-  );
+  const selectedIds = useMemo(() => new Set(pickerDraft.keys()), [pickerDraft]);
 
   const boot = useCallback(async () => {
     setBooting(true);
@@ -84,7 +105,7 @@ export function WorkbenchScreen() {
       setSession(s);
       setFeeling(s.feeling || '');
     } catch (err) {
-      Alert.alert('工作台初始化失败', err instanceof Error ? err.message : '请稍后重试');
+      appAlert('工作台初始化失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       setBooting(false);
     }
@@ -105,7 +126,7 @@ export function WorkbenchScreen() {
       setSession(next);
       setAnalyze(null);
     } catch (err) {
-      Alert.alert('更新失败', err instanceof Error ? err.message : '请稍后重试');
+      appAlert('更新失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       setBusy(false);
     }
@@ -123,7 +144,7 @@ export function WorkbenchScreen() {
       const res = await workbenchService.analyze(session.sessionId);
       setAnalyze(res);
     } catch (err) {
-      Alert.alert('分析失败', err instanceof Error ? err.message : '请确认 AI 服务已启动');
+      appAlert('分析失败', err instanceof Error ? err.message : '请确认 AI 服务已启动');
     } finally {
       setBusy(false);
     }
@@ -176,7 +197,7 @@ export function WorkbenchScreen() {
         ac.signal,
       );
       if (!nextRecipe) {
-        Alert.alert('生成失败', '未收到完整配方');
+        appAlert('生成失败', '未收到完整配方');
       } else {
         setRecipe(nextRecipe);
         if (nextImage) {
@@ -187,7 +208,7 @@ export function WorkbenchScreen() {
       if ((err as Error)?.name === 'AbortError') {
         return;
       }
-      Alert.alert('生成失败', err instanceof Error ? err.message : '请确认 AI 服务已启动');
+      appAlert('生成失败', err instanceof Error ? err.message : '请确认 AI 服务已启动');
       setCardVisible(false);
     } finally {
       setGenerating(false);
@@ -210,14 +231,28 @@ export function WorkbenchScreen() {
         garnishes: recipe.garnishes,
         feeling: recipe.feeling || feeling,
         flavorSummary: recipe.flavorSummary || recipe.flavor_summary,
+        abvRange: recipe.abvRange || recipe.abv_range,
+        difficulty: recipe.difficulty,
+        taste: recipe.taste,
+        flavorProfile: recipe.flavorProfile || recipe.flavor_profile || undefined,
         ingredients: recipe.ingredients,
         steps: recipe.steps,
         instructions: recipe.instructions,
         imageUrl: imageUrl || undefined,
       });
-      Alert.alert('已保存', '可在「我的 → 特调」查看');
+      // 收藏成功：清空会话选择，回到工作台第一步
+      const next = await workbenchService.resetSession(session.sessionId, false);
+      setSession(next);
+      setCardVisible(false);
+      setRecipe(null);
+      setImageUrl(null);
+      setAnalyze(null);
+      setStatusText('');
+      setFeeling('');
+      setCurrentStep(0);
+      appAlert('已收藏', '可在「我的 → 特调」查看');
     } catch (err) {
-      Alert.alert('保存失败', err instanceof Error ? err.message : '请稍后重试');
+      appAlert('保存失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       setBusy(false);
     }
@@ -250,6 +285,20 @@ export function WorkbenchScreen() {
     setPickerQ('');
     setPickerSearchActive(false);
     setPickerLoading(true);
+    // 用当前会话材料初始化草稿，关闭不点确认则丢弃
+    const draft = new Map<
+      number,
+      { ingredientId: number; name: string; amount: number; unit: string }
+    >();
+    for (const ing of session?.ingredients ?? []) {
+      draft.set(ing.ingredientId, {
+        ingredientId: ing.ingredientId,
+        name: ing.name,
+        amount: Number(ing.amount) || 30,
+        unit: ing.unit || 'ml',
+      });
+    }
+    setPickerDraft(draft);
     try {
       let cats = categories;
       if (cats.length === 0) {
@@ -267,52 +316,44 @@ export function WorkbenchScreen() {
     }
   }
 
-  async function addIngredient(item: IngredientItem) {
-    if (!session) {
-      return;
-    }
-    const exists = session.ingredients.some((x) => x.ingredientId === item.id);
-    if (exists) {
-      await removeIngredient(item.id);
-      return;
-    }
-    if (session.ingredients.length >= session.maxIngredients) {
-      Alert.alert('已达上限', `最多 ${session.maxIngredients} 种材料`);
-      return;
-    }
-    const next: WorkbenchIngredientLine[] = [
-      ...session.ingredients,
-      {
+  function togglePickerDraft(item: IngredientItem) {
+    setPickerDraft((prev) => {
+      const next = new Map(prev);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+        return next;
+      }
+      const max = session?.maxIngredients ?? 12;
+      if (next.size >= max) {
+        appAlert('已达上限', `最多 ${max} 种材料`);
+        return prev;
+      }
+      next.set(item.id, {
         ingredientId: item.id,
         name: item.name,
         amount: 30,
         unit: 'ml',
-      },
-    ];
-    await patch({
-      ingredients: next.map((x) => ({
-        ingredientId: x.ingredientId,
-        amount: x.amount,
-        unit: x.unit,
-      })),
+      });
+      return next;
     });
-    // 保持弹层，方便连续多选
   }
 
-  async function updateAmount(ingredientId: number, amount: number) {
+  async function confirmPickerAdd() {
     if (!session) {
       return;
     }
-    const next = session.ingredients.map((x) =>
-      x.ingredientId === ingredientId ? { ...x, amount } : x,
-    );
-    await patch({
-      ingredients: next.map((x) => ({
-        ingredientId: x.ingredientId,
-        amount: x.amount,
-        unit: x.unit,
-      })),
-    });
+    const ingredients = [...pickerDraft.values()].map((x) => ({
+      ingredientId: x.ingredientId,
+      amount: x.amount,
+      unit: x.unit,
+    }));
+    await patch({ ingredients });
+    setPickerVisible(false);
+  }
+
+  function closePicker() {
+    setPickerVisible(false);
+    setPickerDraft(new Map());
   }
 
   async function removeIngredient(ingredientId: number) {
@@ -329,17 +370,55 @@ export function WorkbenchScreen() {
     });
   }
 
-  const fillRatio = useMemo(() => {
-    if (!session?.capacityMl || session.capacityMl <= 0) {
-      return 0;
+  const flavorAxes = useMemo(() => {
+    const fromAi = axesFromAnalyze(analyze?.flavorProfile);
+    return fromAi ? axesToArray(fromAi) : [];
+  }, [analyze?.flavorProfile]);
+
+  const analyzeDescription = useMemo(() => {
+    if (analyze?.flavorSummary) {
+      return analyze.flavorSummary;
     }
-    return Math.min(1, Number(session.volumeMl || 0) / session.capacityMl);
-  }, [session]);
+    if (!session?.ingredients.length) {
+      return '添加材料并完成调配选项后，点击「酒方分析」查看风味画像。';
+    }
+    return '点击「酒方分析」，AI 将根据当前材料与技法给出风味描述。';
+  }, [analyze, session?.ingredients.length]);
+
+  const isLastStep = currentStep >= STEPS.length - 1;
+
+  function goNextStep() {
+    if (!session) {
+      return;
+    }
+    if (currentStep === 0 && !session.glass) {
+      appAlert('请选择杯型', '先选定酒杯容量，再继续选材料。');
+      return;
+    }
+    if (currentStep === 1 && session.ingredients.length === 0) {
+      appAlert('请添加材料', '至少选择一种基酒或利口酒。');
+      return;
+    }
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep((s) => s + 1);
+    }
+  }
+
+  function onPrimaryAction() {
+    if (isLastStep) {
+      void onGenerate();
+    } else {
+      goNextStep();
+    }
+  }
+
+  const nextLabel =
+    currentStep === 0 ? '下一步：选材料' : currentStep === 1 ? '下一步：调配' : '生成特调';
 
   if (booting || !session || !options) {
     return (
       <View style={[styles.root, styles.center]}>
-        <ActivityIndicator color="#C9A227" size="large" />
+        <ActivityIndicator color="#F34B2F" size="large" />
         <Text style={styles.bootText}>正在打开调配台…</Text>
       </View>
     );
@@ -351,7 +430,6 @@ export function WorkbenchScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.kicker}>Workbench</Text>
           <Text style={styles.title}>调配工作台</Text>
-          <Text style={styles.sub}>选杯 → 选料 → 技法 → 生成特调卡片</Text>
         </View>
         <Pressable
           style={styles.resetBtn}
@@ -364,207 +442,221 @@ export function WorkbenchScreen() {
                 setAnalyze(null);
                 setRecipe(null);
                 setImageUrl(null);
+                setCurrentStep(0);
               } catch (err) {
-                Alert.alert('重置失败', err instanceof Error ? err.message : '请稍后重试');
+                appAlert('重置失败', err instanceof Error ? err.message : '请稍后重试');
               }
             })();
           }}
         >
-          <Ionicons name="refresh" size={18} color="#C4B8AC" />
+          <Ionicons name="refresh" size={22} color={colors.muted} />
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: tabBarHeight + 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.section}>杯型</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {glasses.map((g) => {
-            const on = session.glass?.code === g.code;
-            return (
-              <Pressable
-                key={g.code}
-                style={[styles.glassChip, on && styles.chipOn]}
-                onPress={() => void patch({ glassCode: g.code })}
-              >
-                <Text style={[styles.chipTitle, on && styles.chipTitleOn]}>{g.name}</Text>
-                <Text style={styles.chipMeta}>{g.capacityMl}ml</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+      <WorkbenchStepIndicator current={currentStep} />
 
-        {session.capacityMl ? (
-          <View style={styles.capacityCard}>
-            <View style={styles.capacityTop}>
-              <Text style={styles.capacityLabel}>杯容量占用</Text>
-              <Text style={styles.capacityValue}>
-                {Math.round(Number(session.volumeMl || 0))}/{session.capacityMl} ml
-              </Text>
-            </View>
-            <View style={styles.capacityTrack}>
-              <View
-                style={[
-                  styles.capacityFill,
-                  {
-                    width: `${fillRatio * 100}%`,
-                    backgroundColor: fillRatio > 1 ? '#E07070' : '#C9A227',
-                  },
-                ]}
+      <View style={styles.body}>
+        {currentStep === 2 ? (
+          <View style={styles.mixStepBody}>
+            <View style={styles.mixTop}>
+              <View style={styles.mixPanel}>
+                <Text style={styles.mixPanelLabel}>调配技法</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.methodRow}
+                >
+                  {options.methods.map((m) => {
+                    const on = session.method === m.code;
+                    const iconName = METHOD_ICONS[m.code] ?? 'glass-cocktail';
+                    const iconColor = on ? colors.primary : colors.muted;
+                    return (
+                      <Pressable
+                        key={m.code}
+                        style={[styles.methodCard, on && styles.methodCardOn]}
+                        onPress={() => void patch({ method: m.code })}
+                      >
+                        <MaterialCommunityIcons
+                          name={iconName}
+                          size={28}
+                          color={iconColor}
+                          style={styles.optionIcon}
+                        />
+                        <Text style={[styles.optionCn, on && styles.optionCnOn]} numberOfLines={1}>
+                          {m.name}
+                        </Text>
+                        {m.nameEn ? (
+                          <Text style={[styles.optionEn, on && styles.optionEnOn]} numberOfLines={1}>
+                            ({m.nameEn})
+                          </Text>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              <View style={[styles.mixPanel, styles.mixPanelTight]}>
+                <Text style={styles.mixPanelLabel}>选择冰型</Text>
+                <View style={styles.iceGrid}>
+                  {options.iceTypes.map((m) => {
+                    const on = session.iceType === m.code;
+                    const iconName = ICE_ICONS[m.code] ?? 'snowflake';
+                    const iconColor = on ? colors.primary : colors.muted;
+                    return (
+                      <Pressable
+                        key={m.code}
+                        style={[styles.iceCard, on && styles.iceCardOn]}
+                        onPress={() => void patch({ iceType: m.code })}
+                      >
+                        <MaterialCommunityIcons name={iconName} size={22} color={iconColor} />
+                        <Text style={[styles.iceName, on && styles.optionCnOn]} numberOfLines={1}>
+                          {m.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <TextInput
+                style={styles.feelingInput}
+                value={feeling}
+                onChangeText={setFeeling}
+                placeholder="例如：清爽、微苦、适合晚餐"
+                placeholderTextColor={colors.muted}
               />
             </View>
-          </View>
-        ) : null}
 
-        <View style={styles.sectionRow}>
-          <Text style={styles.section}>材料</Text>
-          <Pressable style={styles.addChip} onPress={() => void openPicker()}>
-            <Ionicons name="add" size={16} color="#1C1816" />
-            <Text style={styles.addChipText}>添加</Text>
-          </Pressable>
-        </View>
-        {session.ingredients.length === 0 ? (
-          <Text style={styles.emptyHint}>还没有材料，点右上角添加基酒/利口酒等</Text>
-        ) : (
-          session.ingredients.map((ing) => {
-            const thumb = resolveMediaUrl(ing.imageUrl);
-            return (
-              <View key={ing.ingredientId} style={styles.ingRow}>
-                {thumb ? (
-                  <Image source={{ uri: thumb }} style={styles.ingThumb} />
-                ) : (
-                  <View style={[styles.ingThumb, styles.ingThumbEmpty]}>
-                    <Ionicons name="wine-outline" size={22} color="#6F675F" />
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.ingName}>{ing.name}</Text>
-                  <Text style={styles.ingUnit}>{ing.unit}</Text>
-                </View>
-                <View style={styles.amountCtrl}>
-                  <Pressable
-                    style={styles.amountBtn}
-                    onPress={() =>
-                      void updateAmount(ing.ingredientId, Math.max(5, Number(ing.amount) - 5))
-                    }
-                  >
-                    <Text style={styles.amountBtnText}>−</Text>
-                  </Pressable>
-                  <Text style={styles.amountValue}>{ing.amount}</Text>
-                  <Pressable
-                    style={styles.amountBtn}
-                    onPress={() => void updateAmount(ing.ingredientId, Number(ing.amount) + 5)}
-                  >
-                    <Text style={styles.amountBtnText}>+</Text>
-                  </Pressable>
-                </View>
-                <Pressable onPress={() => void removeIngredient(ing.ingredientId)} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={18} color="#E07070" />
-                </Pressable>
-              </View>
-            );
-          })
-        )}
-
-        <Text style={styles.section}>技法</Text>
-        <View style={styles.wrapChips}>
-          {options.methods.map((m) => {
-            const on = session.method === m.code;
-            return (
-              <Pressable
-                key={m.code}
-                style={[styles.optionChip, on && styles.chipOn]}
-                onPress={() => void patch({ method: m.code })}
-              >
-                <Text style={[styles.optionText, on && styles.chipTitleOn]}>{m.name}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text style={styles.section}>冰块</Text>
-        <View style={styles.wrapChips}>
-          {options.iceTypes.map((m) => {
-            const on = session.iceType === m.code;
-            return (
-              <Pressable
-                key={m.code}
-                style={[styles.optionChip, on && styles.chipOn]}
-                onPress={() => void patch({ iceType: m.code })}
-              >
-                <Text style={[styles.optionText, on && styles.chipTitleOn]}>{m.name}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text style={styles.section}>装饰</Text>
-        <View style={styles.wrapChips}>
-          {options.garnishes.map((m) => {
-            const selected = new Set(session.garnishes || []);
-            const on = selected.has(m.code);
-            return (
-              <Pressable
-                key={m.code}
-                style={[styles.optionChip, on && styles.chipOn]}
-                onPress={() => {
-                  const next = new Set(selected);
-                  if (on) {
-                    next.delete(m.code);
-                  } else {
-                    next.add(m.code);
-                  }
-                  void patch({ garnishes: [...next] });
+            <View style={styles.analyzePanel}>
+              <Text style={styles.analyzePanelTitle}>AI 风味分析</Text>
+              <View
+                style={styles.analyzeRow}
+                onLayout={(e) => {
+                  const h = e.nativeEvent.layout.height;
+                  const next = Math.max(96, Math.min(168, Math.floor(h * 0.78)));
+                  setRadarSize((prev) => (Math.abs(prev - next) >= 4 ? next : prev));
                 }}
               >
-                <Text style={[styles.optionText, on && styles.chipTitleOn]}>{m.name}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text style={styles.section}>想要的感觉</Text>
-        <TextInput
-          style={styles.feelingInput}
-          value={feeling}
-          onChangeText={setFeeling}
-          placeholder="例如：清爽、微苦、适合晚餐"
-          placeholderTextColor="#6F675F"
-        />
-
-        {analyze ? (
-          <View style={styles.analyzeCard}>
-            <Text style={styles.analyzeTitle}>
-              {analyze.feasible ? '可以成杯' : '需要调整'}
-            </Text>
-            {analyze.flavorSummary ? (
-              <Text style={styles.analyzeFlavor}>{analyze.flavorSummary}</Text>
-            ) : null}
-            {(analyze.conflicts || []).map((c, i) => (
-              <Text
-                key={`c-${i}`}
-                style={[
-                  styles.analyzeLine,
-                  c.level === 'error' ? styles.analyzeError : styles.analyzeWarn,
-                ]}
-              >
-                · {c.message}
-              </Text>
-            ))}
-            {(analyze.suggestions || []).map((s, i) => (
-              <Text key={`s-${i}`} style={styles.analyzeSuggest}>
-                建议：{s}
-              </Text>
-            ))}
+                <FlavorRadarChart values={flavorAxes} size={radarSize} />
+                <View style={styles.analyzeDesc}>
+                  {analyze ? (
+                    <Text
+                      style={[
+                        styles.analyzeStatus,
+                        analyze.feasible ? styles.analyzeOk : styles.analyzeWarnTitle,
+                      ]}
+                    >
+                      {analyze.feasible ? '可以成杯' : '需要调整'}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.analyzeDescText}>{analyzeDescription}</Text>
+                  {(analyze?.suggestions ?? []).slice(0, 2).map((s, i) => (
+                    <Text key={`sg-${i}`} style={styles.analyzeSuggestInline}>
+                      · {s}
+                    </Text>
+                  ))}
+                </View>
+              </View>
+            </View>
           </View>
-        ) : null}
-      </ScrollView>
+        ) : (
+          <ScrollView
+            style={styles.stepScroll}
+            contentContainerStyle={styles.stepScrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.stepHeading}>
+              {currentStep === 0 ? '选择杯型' : '选择材料'}
+            </Text>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 10) + 4 }]}>
+            {currentStep === 0 ? (
+              <FlatList
+                data={glasses}
+                keyExtractor={(g) => g.code}
+                numColumns={GLASS_COLS}
+                scrollEnabled={false}
+                nestedScrollEnabled
+                style={styles.glassGridList}
+                columnWrapperStyle={GLASS_COLS > 1 ? styles.glassRow : undefined}
+                contentContainerStyle={styles.glassList}
+                renderItem={({ item: g }) => {
+                  const on = session.glass?.code === g.code;
+                  const icon = GLASS_ICONS[g.code];
+                  return (
+                    <Pressable
+                      style={[
+                        styles.glassCard,
+                        { width: glassCardWidth, maxWidth: glassCardWidth },
+                        on && styles.glassCardOn,
+                      ]}
+                      onPress={() => void patch({ glassCode: g.code })}
+                    >
+                      {icon ? (
+                        <Image source={icon} style={styles.glassIcon} resizeMode="contain" />
+                      ) : (
+                        <View style={[styles.glassIcon, styles.glassIconFallback]}>
+                          <Ionicons name="wine-outline" size={36} color={colors.muted} />
+                        </View>
+                      )}
+                      <Text style={[styles.glassName, on && styles.glassNameOn]} numberOfLines={1}>
+                        {g.name}
+                      </Text>
+                      <Text style={styles.glassMeta}>{g.capacityMl} ml</Text>
+                    </Pressable>
+                  );
+                }}
+              />
+            ) : null}
+
+            {currentStep === 1 ? (
+              <>
+                <View style={styles.sectionRow}>
+                  <Text style={styles.sectionInline}>已选 {session.ingredients.length} 项</Text>
+                  <Pressable style={styles.addChip} onPress={() => void openPicker()}>
+                    <Ionicons name="add" size={16} color={colors.text} />
+                    <Text style={styles.addChipText}>添加</Text>
+                  </Pressable>
+                </View>
+                {session.ingredients.length === 0 ? (
+                  <Text style={styles.emptyHint}>还没有材料，点「添加」从知识库选择</Text>
+                ) : (
+                  session.ingredients.map((ing) => {
+                    const thumb = resolveMediaUrl(ing.imageUrl);
+                    return (
+                      <View key={ing.ingredientId} style={styles.ingRow}>
+                        {thumb ? (
+                          <Image source={{ uri: thumb }} style={styles.ingThumb} />
+                        ) : (
+                          <View style={[styles.ingThumb, styles.ingThumbEmpty]}>
+                            <Ionicons name="wine-outline" size={22} color={colors.muted} />
+                          </View>
+                        )}
+                        <Text style={[styles.ingName, { flex: 1 }]}>{ing.name}</Text>
+                        <Pressable
+                          onPress={() => void removeIngredient(ing.ingredientId)}
+                          hitSlop={8}
+                        >
+                          <Ionicons name="trash-outline" size={18} color="#E07070" />
+                        </Pressable>
+                      </View>
+                    );
+                  })
+                )}
+              </>
+            ) : null}
+          </ScrollView>
+        )}
+      </View>
+
+      <View style={[styles.footer, { paddingBottom: 10 }]}>
         <Pressable
-          style={[styles.secondaryBtn, busy && styles.disabled]}
-          disabled={busy || generating}
+          style={[
+            styles.secondaryBtn,
+            (busy || generating || !isLastStep) && styles.disabled,
+          ]}
+          disabled={busy || generating || !isLastStep}
           onPress={() => void onAnalyze()}
         >
           <Text style={styles.secondaryText}>酒方分析</Text>
@@ -572,31 +664,36 @@ export function WorkbenchScreen() {
         <Pressable
           style={[styles.primaryBtn, (busy || generating) && styles.disabled]}
           disabled={busy || generating}
-          onPress={() => void onGenerate()}
+          onPress={() => void onPrimaryAction()}
         >
           {generating ? (
-            <ActivityIndicator color="#1C1816" />
+            <ActivityIndicator color={colors.text} />
           ) : (
-            <Text style={styles.primaryText}>生成特调卡片</Text>
+            <>
+              <Text style={styles.primaryText}>{isLastStep ? '生成特调' : nextLabel}</Text>
+              {!isLastStep ? (
+                <Ionicons name="arrow-forward" size={16} color={colors.text} />
+              ) : null}
+            </>
           )}
         </Pressable>
       </View>
 
-      {/* 材料选择：图片网格 + 分类 Tab（对齐酒柜） */}
-      <Modal visible={pickerVisible} animationType="slide" onRequestClose={() => setPickerVisible(false)}>
+      {/* 材料选择：图片网格 + 分类 Tab；勾选暂存，确认后一次保存 */}
+      <Modal visible={pickerVisible} animationType="slide" onRequestClose={closePicker}>
         <View style={[styles.modal, { paddingTop: insets.top + 8 }]}>
           <View style={styles.modalHeader}>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalTitle}>添加材料</Text>
-              <Text style={styles.sub}>点选卡片加入调配台</Text>
+              <Text style={styles.sub}>可多选，点下方确认后加入调配台</Text>
             </View>
-            <Pressable onPress={() => setPickerVisible(false)} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color="#C4B8AC" />
+            <Pressable onPress={closePicker} style={styles.closeBtn}>
+              <Ionicons name="close" size={22} color="#A0A0AA" />
             </Pressable>
           </View>
 
           <View style={styles.searchWrap}>
-            <Ionicons name="sparkles-outline" size={16} color="#8B8178" />
+            <Ionicons name="sparkles-outline" size={16} color="#A0A0AA" />
             <TextInput
               style={styles.searchInput}
               value={pickerQ}
@@ -608,7 +705,7 @@ export function WorkbenchScreen() {
                 }
               }}
               placeholder="输入品牌、酒款或类型"
-              placeholderTextColor="#6F675F"
+              placeholderTextColor="#A0A0AA"
               returnKeyType="search"
               onSubmitEditing={() => {
                 const kw = pickerQ.trim();
@@ -642,16 +739,17 @@ export function WorkbenchScreen() {
           ) : null}
 
           {pickerLoading ? (
-            <ActivityIndicator color="#C9A227" style={{ marginTop: 24 }} />
+            <ActivityIndicator color="#F34B2F" style={{ marginTop: 24 }} />
           ) : (
             <FlatList
+              style={{ flex: 1 }}
               data={pickerItems}
               keyExtractor={(item) => String(item.id)}
               numColumns={GRID_COLS}
               columnWrapperStyle={styles.gridRow}
               contentContainerStyle={[
                 styles.gridList,
-                { paddingBottom: Math.max(insets.bottom, 24) + 16 },
+                { paddingBottom: 16 },
               ]}
               ListEmptyComponent={<Text style={styles.emptyHint}>没有匹配材料</Text>}
               renderItem={({ item }) => {
@@ -659,7 +757,7 @@ export function WorkbenchScreen() {
                 return (
                   <Pressable
                     style={[styles.gridCard, on && styles.gridCardOn]}
-                    onPress={() => void addIngredient(item)}
+                    onPress={() => togglePickerDraft(item)}
                   >
                     <PickerThumb uri={item.imageUrl} />
                     <Text style={styles.gridEn} numberOfLines={1}>
@@ -677,11 +775,11 @@ export function WorkbenchScreen() {
                     </Text>
                     {on ? (
                       <View style={styles.gridCheck}>
-                        <Ionicons name="checkmark" size={14} color="#1C1816" />
+                        <Ionicons name="checkmark" size={14} color="#1B1B1F" />
                       </View>
                     ) : (
                       <View style={styles.gridAdd}>
-                        <Ionicons name="add" size={14} color="#C9A227" />
+                        <Ionicons name="add" size={14} color="#F34B2F" />
                       </View>
                     )}
                   </Pressable>
@@ -689,105 +787,46 @@ export function WorkbenchScreen() {
               }}
             />
           )}
-        </View>
-      </Modal>
 
-      {/* 特调卡片 */}
-      <Modal visible={cardVisible} animationType="slide" onRequestClose={() => setCardVisible(false)}>
-        <View style={[styles.modal, { paddingTop: insets.top + 8 }]}>
-          <View style={styles.modalHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.modalTitle}>{recipe?.name || '特调卡片'}</Text>
-              <Text style={styles.sub}>{statusText || '生成中…'}</Text>
-            </View>
-            <Pressable onPress={() => setCardVisible(false)} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color="#C4B8AC" />
-            </Pressable>
-          </View>
-
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-            <View style={styles.recipeCard}>
-              {imageUrl ? (
-                <Image source={{ uri: resolveMediaUrl(imageUrl) }} style={styles.heroImage} />
-              ) : (
-                <View style={[styles.heroImage, styles.heroPlaceholder]}>
-                  {generating ? (
-                    <ActivityIndicator color="#C9A227" size="large" />
-                  ) : (
-                    <Ionicons name="wine-outline" size={42} color="#6F675F" />
-                  )}
-                  <Text style={styles.heroHint}>
-                    {generating ? '配图生成中' : '暂无配图'}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.recipeBody}>
-                {recipe?.nameEn ? <Text style={styles.en}>{recipe.nameEn}</Text> : null}
-                <Text style={styles.meta}>
-                  {[recipe?.glass, recipe?.method, recipe?.iceType || recipe?.ice_type]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-                {(recipe?.flavorSummary || recipe?.flavor_summary) ? (
-                  <Text style={styles.flavor}>
-                    {recipe?.flavorSummary || recipe?.flavor_summary}
-                  </Text>
-                ) : null}
-
-                {recipe?.ingredients?.length ? (
-                  <View style={styles.block}>
-                    <Text style={styles.blockTitle}>材料</Text>
-                    {recipe.ingredients.map((ing, idx) => (
-                      <Text key={`ing-${idx}`} style={styles.blockText}>
-                        · {ing.name}
-                        {ing.amount != null
-                          ? ` ${ing.amount}${ing.unit || ''}`
-                          : ing.unit
-                            ? ` ${ing.unit}`
-                            : ''}
-                      </Text>
-                    ))}
-                  </View>
-                ) : null}
-
-                {recipe?.steps?.length ? (
-                  <View style={styles.block}>
-                    <Text style={styles.blockTitle}>制作步骤</Text>
-                    {recipe.steps.map((step, idx) => (
-                      <Text key={`step-${idx}`} style={styles.blockText}>
-                        {step.order || idx + 1}. {step.text}
-                      </Text>
-                    ))}
-                  </View>
-                ) : recipe?.instructions ? (
-                  <View style={styles.block}>
-                    <Text style={styles.blockTitle}>制作步骤</Text>
-                    <Text style={styles.blockText}>{recipe.instructions}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          </ScrollView>
-
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={[styles.pickerFooter, { paddingBottom: Math.max(insets.bottom, 12) }]}>
             <Pressable
-              style={[styles.primaryBtn, (!recipe || busy || generating) && styles.disabled]}
-              disabled={!recipe || busy || generating}
-              onPress={() => void onSaveCustom()}
+              style={[styles.pickerConfirmBtn, busy && styles.disabled]}
+              disabled={busy}
+              onPress={() => void confirmPickerAdd()}
             >
-              <Text style={styles.primaryText}>保存到特调</Text>
+              <Text style={styles.pickerConfirmText}>
+                确认添加 ({pickerDraft.size})
+              </Text>
             </Pressable>
           </View>
         </View>
       </Modal>
+
+      {/* 特调配方详情（对齐设计稿 04） */}
+      <Modal visible={cardVisible} animationType="slide" onRequestClose={() => setCardVisible(false)}>
+        <RecipeDetailView
+          recipe={recipe}
+          imageUrl={imageUrl}
+          generating={generating}
+          statusText={statusText}
+          saving={busy}
+          ingredientThumbs={(session?.ingredients ?? []).map((ing) => ({
+            name: ing.name,
+            imageUrl: ing.imageUrl,
+          }))}
+          onClose={() => setCardVisible(false)}
+          onSave={() => void onSaveCustom()}
+        />
+      </Modal>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#14110F' },
+  root: { flex: 1, backgroundColor: '#111111' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  bootText: { color: '#8B8178', marginTop: 12 },
+  bootText: { color: '#A0A0AA', marginTop: 12 },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -795,23 +834,134 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   kicker: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 12,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-  title: { color: '#F4EDE4', fontSize: 28, fontWeight: '700', marginTop: 2 },
-  sub: { color: '#8B8178', fontSize: 13, marginTop: 4 },
+  title: { color: '#F5F5F5', fontSize: 28, fontWeight: '700', marginTop: 2 },
+  body: {
+    flex: 1,
+    minHeight: 0,
+  },
+  stepScroll: {
+    flex: 1,
+  },
+  stepScrollContent: {
+    paddingBottom: 12,
+  },
+  stepHeading: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
+  mixStepBody: {
+    flex: 1,
+    minHeight: 0,
+  },
+  mixTop: {
+    flexShrink: 0,
+  },
+  mixPanel: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  mixPanelTight: {
+    marginBottom: 8,
+  },
+  mixPanelLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  methodRow: {
+    gap: 10,
+    paddingRight: 4,
+  },
+  methodCard: {
+    width: 80,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  methodCardOn: {
+    borderColor: colors.primary,
+    backgroundColor: '#2A1814',
+  },
+  optionIcon: {
+    marginBottom: 8,
+  },
+  optionCn: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  optionCnOn: {
+    color: colors.primary,
+  },
+  optionEn: {
+    color: colors.muted,
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  optionEnOn: {
+    color: colors.primary,
+  },
+  iceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    gap: 6,
+  },
+  iceCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: 4,
+  },
+  iceCardOn: {
+    borderColor: colors.primary,
+    backgroundColor: '#2A1814',
+  },
+  iceName: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  sectionInline: {
+    color: colors.muted,
+    fontSize: 13,
+  },
   resetBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1C1816',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1B1B1F',
     alignItems: 'center',
     justifyContent: 'center',
   },
   section: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 14,
     fontWeight: '700',
     marginTop: 18,
@@ -822,63 +972,84 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginRight: 20,
+    marginHorizontal: 20,
+    marginBottom: 10,
   },
-  chipRow: { paddingHorizontal: 16, gap: 10 },
-  glassChip: {
-    width: 108,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+  glassList: {
+    paddingHorizontal: GLASS_PAD,
+    paddingBottom: 8,
+  },
+  glassRow: {
+    gap: GLASS_GAP,
+    marginBottom: GLASS_GAP,
+    justifyContent: 'flex-start',
+  },
+  glassCard: {
+    flexGrow: 0,
+    flexShrink: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 16,
-    backgroundColor: '#1C1816',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  glassCardOn: {
+    borderColor: colors.primary,
+    backgroundColor: '#2A1814',
+  },
+  glassIcon: {
+    width: 72,
+    height: 72,
+    marginBottom: 8,
+  },
+  glassIconFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+  },
+  glassName: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  glassNameOn: {
+    color: colors.primary,
+  },
+  glassMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 4,
   },
   chipOn: {
-    borderColor: '#C9A227',
-    backgroundColor: '#2A2218',
+    borderColor: colors.primary,
+    backgroundColor: '#2A1814',
   },
-  chipTitle: { color: '#F4EDE4', fontSize: 15, fontWeight: '600' },
-  chipTitleOn: { color: '#C9A227' },
-  chipMeta: { color: '#8B8178', fontSize: 12, marginTop: 4 },
-  capacityCard: {
-    marginHorizontal: 20,
-    marginTop: 14,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: '#1C1816',
-    borderWidth: 1,
-    borderColor: '#2A2420',
-  },
-  capacityTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  capacityLabel: { color: '#8B8178', fontSize: 12 },
-  capacityValue: { color: '#F4EDE4', fontSize: 13, fontWeight: '600' },
-  capacityTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#2A2420',
-    overflow: 'hidden',
-  },
-  capacityFill: { height: '100%', borderRadius: 4 },
+  chipTitle: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  chipTitleOn: { color: colors.primary },
+  chipMeta: { color: colors.muted, fontSize: 12, marginTop: 4 },
   addChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#C9A227',
+    backgroundColor: '#F34B2F',
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  addChipText: { color: '#1C1816', fontWeight: '700', fontSize: 13 },
-  emptyHint: { color: '#8B8178', marginHorizontal: 20, fontSize: 13 },
+  addChipText: { color: colors.text, fontWeight: '700', fontSize: 13 },
+  emptyHint: { color: '#A0A0AA', marginHorizontal: 20, fontSize: 13 },
   ingRow: {
     marginHorizontal: 20,
     marginBottom: 8,
     padding: 10,
     borderRadius: 14,
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -887,25 +1058,13 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 10,
-    backgroundColor: '#0A0908',
+    backgroundColor: '#111111',
   },
   ingThumbEmpty: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ingName: { color: '#F4EDE4', fontSize: 15, fontWeight: '600' },
-  ingUnit: { color: '#8B8178', fontSize: 12, marginTop: 2 },
-  amountCtrl: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  amountBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#2A2420',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  amountBtnText: { color: '#F4EDE4', fontSize: 16, fontWeight: '700' },
-  amountValue: { color: '#C9A227', width: 36, textAlign: 'center', fontWeight: '700' },
+  ingName: { color: '#F5F5F5', fontSize: 15, fontWeight: '600' },
   wrapChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -916,44 +1075,78 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
   },
-  optionText: { color: '#C4B8AC', fontSize: 13 },
+  optionText: { color: '#A0A0AA', fontSize: 13 },
   feelingInput: {
-    marginHorizontal: 20,
-    height: 48,
+    marginHorizontal: 16,
+    marginTop: 0,
+    marginBottom: 10,
+    height: 44,
     borderRadius: 14,
     paddingHorizontal: 14,
-    color: '#F4EDE4',
-    backgroundColor: '#1C1816',
+    color: colors.text,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: colors.border,
   },
-  analyzeCard: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 14,
+  analyzePanel: {
+    flex: 1,
+    minHeight: 0,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 14,
-    backgroundColor: '#1A1612',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#3A2F24',
+    borderColor: colors.border,
   },
-  analyzeTitle: { color: '#C9A227', fontSize: 16, fontWeight: '700' },
-  analyzeFlavor: { color: '#F4EDE4', marginTop: 8, lineHeight: 20 },
-  analyzeLine: { marginTop: 6, fontSize: 13 },
-  analyzeError: { color: '#E07070' },
-  analyzeWarn: { color: '#D4A84B' },
-  analyzeSuggest: { color: '#8B8178', marginTop: 6, fontSize: 12 },
+  analyzePanelTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  analyzeRow: {
+    flex: 1,
+    minHeight: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  analyzeDesc: {
+    flex: 1,
+    minHeight: 0,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  analyzeStatus: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  analyzeOk: { color: colors.primary },
+  analyzeWarnTitle: { color: colors.accent },
+  analyzeDescText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  analyzeSuggestInline: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+  },
   footer: {
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#2A2420',
-    backgroundColor: '#14110F',
+    borderTopColor: '#303034',
+    backgroundColor: '#111111',
   },
   secondaryBtn: {
     flex: 1,
@@ -965,57 +1158,78 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#241C2E',
   },
-  secondaryText: { color: '#F4EDE4', fontWeight: '700' },
+  secondaryText: { color: '#F5F5F5', fontWeight: '700' },
   primaryBtn: {
     flex: 1.4,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#C9A227',
+    backgroundColor: colors.primary,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
-  primaryText: { color: '#1C1816', fontWeight: '800', fontSize: 15 },
+  primaryText: { color: colors.text, fontWeight: '800', fontSize: 14 },
   disabled: { opacity: 0.5 },
-  modal: { flex: 1, backgroundColor: '#0E0C0B' },
+  modal: { flex: 1, backgroundColor: '#111111' },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingHorizontal: 16,
     marginBottom: 8,
   },
-  modalTitle: { color: '#F4EDE4', fontSize: 22, fontWeight: '700' },
+  modalTitle: { color: '#F5F5F5', fontSize: 22, fontWeight: '700' },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pickerFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  pickerConfirmBtn: {
+    height: 52,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  pickerConfirmText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
   },
   searchWrap: {
     marginHorizontal: 16,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     gap: 8,
   },
-  searchInput: { flex: 1, color: '#F4EDE4' },
+  searchInput: { flex: 1, color: '#F5F5F5' },
   tabsBlock: { marginTop: 10, marginBottom: 4 },
   primaryTabs: { paddingHorizontal: 16, gap: 18 },
   primaryTab: { paddingBottom: 8 },
-  primaryTabText: { color: '#8B8178', fontSize: 15, fontWeight: '600' },
-  primaryTabTextActive: { color: '#C9A227' },
+  primaryTabText: { color: '#A0A0AA', fontSize: 15, fontWeight: '600' },
+  primaryTabTextActive: { color: '#F34B2F' },
   underline: { marginTop: 6, height: 2, borderRadius: 1, backgroundColor: 'transparent' },
-  underlineActive: { backgroundColor: '#C9A227' },
+  underlineActive: { backgroundColor: '#F34B2F' },
   secondaryTabs: { paddingHorizontal: 16, gap: 14, paddingTop: 4, paddingBottom: 6 },
   secondaryTab: { paddingBottom: 6 },
-  secondaryTabText: { color: '#6F675F', fontSize: 13 },
-  secondaryTabTextActive: { color: '#F4EDE4', fontWeight: '600' },
+  secondaryTabText: { color: '#A0A0AA', fontSize: 13 },
+  secondaryTabTextActive: { color: '#F5F5F5', fontWeight: '600' },
   gridList: {
     paddingHorizontal: GRID_PAD,
     paddingTop: 10,
@@ -1029,26 +1243,26 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#161210',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     padding: 8,
     gap: 4,
   },
   gridCardOn: {
-    borderColor: '#C9A227',
+    borderColor: '#F34B2F',
     backgroundColor: '#2A2218',
   },
   gridThumb: {
     width: '100%',
     aspectRatio: 1,
     borderRadius: 8,
-    backgroundColor: '#0A0908',
+    backgroundColor: '#111111',
   },
   gridThumbEmpty: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   gridEn: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
@@ -1060,7 +1274,7 @@ const styles = StyleSheet.create({
     minHeight: 30,
   },
   gridMeta: {
-    color: '#6F675F',
+    color: '#A0A0AA',
     fontSize: 10,
   },
   gridCheck: {
@@ -1070,7 +1284,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#C9A227',
+    backgroundColor: '#F34B2F',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1083,27 +1297,10 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     backgroundColor: 'rgba(20,17,15,0.72)',
     borderWidth: 1,
-    borderColor: '#C9A227',
+    borderColor: '#F34B2F',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  recipeCard: {
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: '#1C1816',
-    borderWidth: 1,
-    borderColor: '#2A2420',
-  },
-  heroImage: { width: '100%', height: 220, backgroundColor: '#161210' },
-  heroPlaceholder: { alignItems: 'center', justifyContent: 'center', gap: 8 },
-  heroHint: { color: '#8B8178', fontSize: 13 },
-  recipeBody: { padding: 16 },
-  en: { color: '#8B8178', fontSize: 13 },
-  meta: { color: '#A89B90', marginTop: 6, fontSize: 13 },
-  flavor: { color: '#F4EDE4', marginTop: 10, lineHeight: 20 },
-  block: { marginTop: 16 },
-  blockTitle: { color: '#C9A227', fontWeight: '700', marginBottom: 8 },
-  blockText: { color: '#C4B8AC', lineHeight: 22, fontSize: 14 },
 });
 
 function PickerThumb({ uri }: { uri?: string | null }) {
@@ -1111,7 +1308,7 @@ function PickerThumb({ uri }: { uri?: string | null }) {
   if (!resolved) {
     return (
       <View style={[styles.gridThumb, styles.gridThumbEmpty]}>
-        <Ionicons name="wine-outline" size={28} color="#6F675F" />
+        <Ionicons name="wine-outline" size={28} color="#A0A0AA" />
       </View>
     );
   }

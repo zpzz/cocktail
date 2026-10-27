@@ -10,6 +10,7 @@ import {
 import { Provider, useDispatch } from 'react-redux';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { hydrateAuth } from './src/auth/session';
+import { AppDialogHost } from './src/components/AppDialog';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { store, type AppDispatch } from './src/store';
 
@@ -38,6 +39,7 @@ export default function App() {
           <SafeAreaProvider>
             <AuthBootstrap>
               <RootNavigator />
+              <AppDialogHost />
             </AuthBootstrap>
             <StatusBar style="light" />
           </SafeAreaProvider>

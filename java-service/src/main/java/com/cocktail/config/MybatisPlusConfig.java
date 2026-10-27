@@ -21,6 +21,7 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
         "com.cocktail.user.mapper",
         "com.cocktail.cabinet.mapper",
         "com.cocktail.ingredient.mapper",
+        "com.cocktail.recipe.mapper",
         "com.cocktail.workbench.mapper",
         "com.cocktail.menu.mapper",
         "com.cocktail.custom.mapper"

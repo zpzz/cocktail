@@ -20,6 +20,10 @@ export function createCustomService(http: HttpClient) {
       garnishes?: string[];
       feeling?: string;
       flavorSummary?: string;
+      abvRange?: string;
+      difficulty?: string;
+      taste?: string;
+      flavorProfile?: WorkbenchRecipe['flavorProfile'];
       ingredients?: WorkbenchRecipe['ingredients'];
       steps?: WorkbenchRecipe['steps'];
       instructions?: string;

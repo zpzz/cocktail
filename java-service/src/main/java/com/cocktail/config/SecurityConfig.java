@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/cocktail/auth/**").permitAll()
                         // 材料搜索、杯型/技法枚举：未登录也能浏览目录
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/ingredients/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cocktail/recipes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/workbench/glasses", "/api/cocktail/workbench/options").permitAll()
                         .anyRequest().authenticated()
                 )

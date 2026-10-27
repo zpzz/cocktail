@@ -1,187 +1,220 @@
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import {
-  createChatMessage,
-  createThreadId,
-  reduceAssistantMessage,
-  type ChatMessage,
-} from '@cocktail/shared';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import type { RecipeSummary } from '@cocktail/shared';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Image,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resolveMediaUrl } from '../adapters/apiBase';
-import { chatService } from '../api';
+import { recipeService } from '../api';
+import type { HomeStackParamList } from '../navigation/HomeStack';
+import type { RootTabParamList } from '../navigation/RootNavigator';
+import { colors } from '../theme';
 
-const WELCOME: ChatMessage = {
-  id: 'welcome',
-  role: 'assistant',
-  text: '可以说「莫吉托怎么做」查库，「推荐两杯利口酒」，或「帮我定制一杯朗姆特调」。闲聊也可以，比如「你是谁」。',
-};
+const LOGO = require('../../assets/images/jiufang-logo.png');
+
+const QUICK_ENTRIES: {
+  key: string;
+  title: string;
+  sub: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  tab?: keyof RootTabParamList;
+  openChat?: boolean;
+}[] = [
+  { key: 'chat', title: 'AI 问答', sub: '鸡尾酒知识库', icon: 'chatbubble-ellipses-outline', openChat: true },
+  {
+    key: 'workbench',
+    title: '调配工作台',
+    sub: '材料 → 配方',
+    icon: 'flask-outline',
+    tab: 'Workbench',
+  },
+  {
+    key: 'cabinet',
+    title: '酒柜管理',
+    sub: '我的酒柜',
+    icon: 'wine-outline',
+    tab: 'Cabinet',
+  },
+  { key: 'more', title: '更多', sub: '敬请期待', icon: 'grid-outline' },
+];
+
+type HomeNav = CompositeNavigationProp<
+  NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>,
+  BottomTabNavigationProp<RootTabParamList>
+>;
+
+function recipeMeta(recipe: RecipeSummary): string {
+  const parts = [
+    recipe.category,
+    recipe.baseSpirit,
+    ...(recipe.flavorTags ?? []).slice(0, 2),
+  ].filter((x): x is string => Boolean(x && String(x).trim()));
+  return parts.length ? parts.join(' · ') : '精选配方';
+}
 
 export function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
-  const threadId = useMemo(() => createThreadId(), []);
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
-  const listRef = useRef<FlatList<ChatMessage>>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const navigation = useNavigation<HomeNav>();
+  const [recipe, setRecipe] = useState<RecipeSummary | null>(null);
+  const [loadingReco, setLoadingReco] = useState(true);
 
-  useEffect(() => {
-    return () => abortRef.current?.abort();
+  const loadRecommend = useCallback(async () => {
+    setLoadingReco(true);
+    try {
+      const next = await recipeService.random(true);
+      setRecipe(next);
+    } catch {
+      setRecipe(null);
+    } finally {
+      setLoadingReco(false);
+    }
   }, []);
 
-  async function send() {
-    const message = draft.trim();
-    if (!message || sending) {
+  useEffect(() => {
+    void loadRecommend();
+  }, [loadRecommend]);
+
+  const imageUri = useMemo(() => resolveMediaUrl(recipe?.imageUrl), [recipe?.imageUrl]);
+
+  function openChat() {
+    navigation.navigate('Chat');
+  }
+
+  function onQuickEntry(entry: (typeof QUICK_ENTRIES)[number]) {
+    if (entry.openChat) {
+      openChat();
       return;
     }
-    const userMessage = createChatMessage('user', message);
-    const assistantId = `assistant-${Date.now()}`;
-    const assistantMessage = createChatMessage('assistant', '', assistantId);
-    assistantMessage.status = '正在检索配方…';
-    setDraft('');
-    setSending(true);
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-    try {
-      await chatService.stream(
-        {
-          threadId,
-          message,
-          attachCabinet: true,
-        },
-        (event) => {
-          if (event.type === 'error') {
-            throw new Error(event.message);
-          }
-          setMessages((prev) =>
-            prev.map((item) =>
-              item.id === assistantId ? reduceAssistantMessage(item, event) : item,
-            ),
-          );
-        },
-        controller.signal,
-      );
-    } catch (error) {
-      const text = error instanceof Error ? error.message : '对话失败';
-      setMessages((prev) =>
-        prev.map((item) =>
-          item.id === assistantId
-            ? { ...item, error: text, status: undefined, imageLoading: false }
-            : item,
-        ),
-      );
-    } finally {
-      setSending(false);
-      abortRef.current = null;
+    if (entry.tab) {
+      navigation.navigate(entry.tab);
     }
   }
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
-      <View style={styles.header}>
-        <Text style={styles.kicker}>Home</Text>
-        <Text style={styles.title}>首页</Text>
-        <Text style={styles.sub}>查配方 · 聊特调 · 酒方陪你调一杯</Text>
-      </View>
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-        renderItem={({ item }) => <Bubble message={item} />}
-      />
-      <KeyboardStickyView offset={{ closed: 0, opened: tabBarHeight }}>
-        <View style={styles.composer}>
-          <TextInput
-            style={styles.input}
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="输入问题，回车发送"
-            placeholderTextColor="#8B8178"
-            editable={!sending}
-            returnKeyType="send"
-            onSubmitEditing={send}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="发送"
-            style={[styles.send, (!draft.trim() || sending) && styles.sendDisabled]}
-            onPress={send}
-            disabled={!draft.trim() || sending}
-          >
-            <Text style={styles.sendText}>{sending ? '…' : '发送'}</Text>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <HomeHeader />
+
+      <View style={styles.body}>
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlow} />
+          <View style={styles.heroBody}>
+            <Text style={styles.heroTitle}>AI 为你调一杯{'\n'}专属鸡尾酒</Text>
+            <Text style={styles.heroSub}>
+              告诉我你的口味偏好，让 AI 为你推荐最适合的配方
+            </Text>
+            <Pressable style={styles.heroCta} onPress={openChat}>
+              <Text style={styles.heroCtaText}>开始对话</Text>
+              <Ionicons name="arrow-forward" size={16} color={colors.text} />
+            </Pressable>
+          </View>
+          <View style={styles.heroArt}>
+            <Ionicons name="wine" size={56} color={colors.primary} style={{ opacity: 0.85 }} />
+          </View>
+        </View>
+
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>今日推荐</Text>
+          <Pressable onPress={() => void loadRecommend()} hitSlop={8}>
+            <Text style={styles.sectionMore}>换一杯</Text>
           </Pressable>
         </View>
-      </KeyboardStickyView>
+
+        <View style={styles.recoCard}>
+          {loadingReco ? (
+            <View style={styles.recoLoading}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : (
+            <>
+              <View style={styles.recoThumb}>
+                {imageUri ? (
+                  <Image source={{ uri: imageUri }} style={styles.recoImage} resizeMode="cover" />
+                ) : (
+                  <Ionicons name="wine-outline" size={28} color={colors.accent} />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.recoTitleRow}>
+                  <Text style={styles.recoName} numberOfLines={1}>
+                    {recipe?.nameEn || recipe?.name || '暂无推荐'}
+                  </Text>
+                  {recipe ? (
+                    <View style={styles.recoTag}>
+                      <Text style={styles.recoTagText}>热门</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.recoMeta} numberOfLines={2}>
+                  {recipe ? recipeMeta(recipe) : '稍后再试，或点击「换一杯」'}
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={styles.quickGrid}>
+          <View style={styles.quickRow}>
+            {QUICK_ENTRIES.slice(0, 2).map((entry) => (
+              <Pressable
+                key={entry.key}
+                style={[styles.quickCard, entry.key === 'more' && styles.quickCardMuted]}
+                onPress={() => onQuickEntry(entry)}
+                disabled={entry.key === 'more'}
+              >
+                <Ionicons name={entry.icon} size={22} color={colors.primary} />
+                <Text style={styles.quickTitle}>{entry.title}</Text>
+                <Text style={styles.quickSub}>{entry.sub}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.quickRow}>
+            {QUICK_ENTRIES.slice(2).map((entry) => (
+              <Pressable
+                key={entry.key}
+                style={[styles.quickCard, entry.key === 'more' && styles.quickCardMuted]}
+                onPress={() => onQuickEntry(entry)}
+                disabled={entry.key === 'more'}
+              >
+                <Ionicons name={entry.icon} size={22} color={colors.primary} />
+                <Text style={styles.quickTitle}>{entry.title}</Text>
+                <Text style={styles.quickSub}>{entry.sub}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
 
-function Bubble({ message }: { message: ChatMessage }) {
-  const isUser = message.role === 'user';
+function HomeHeader() {
   return (
-    <View style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}>
-      {message.sources && message.sources.length > 0 ? (
-        <View style={styles.sources}>
-          <Text style={styles.sourceLabel}>
-            {message.sourceRole === 'reference' ? '参考配方' : '库内配方'}
-          </Text>
-          {message.sources.map((source) => (
-            <Text key={source.id} style={styles.sourceChip}>
-              {source.name}
-            </Text>
-          ))}
+    <View style={styles.header}>
+      <View style={styles.brandRow}>
+        <Image source={LOGO} style={styles.logo} />
+        <View>
+          <Text style={styles.brandCn}>酒方</Text>
+          <Text style={styles.brandEn}>JIUFANG</Text>
         </View>
-      ) : null}
-      {(message.images ?? []).map((image) =>
-        image.url ? (
-          <Image
-            key={image.url}
-            source={{ uri: resolveMediaUrl(image.url) }}
-            style={styles.photo}
-            resizeMode="cover"
-          />
-        ) : null,
-      )}
-      {message.generatedImageUrl ? (
-        <Image
-          source={{ uri: resolveMediaUrl(message.generatedImageUrl) }}
-          style={styles.photo}
-          resizeMode="cover"
-        />
-      ) : null}
-      {message.imageLoading ? (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator color="#C9A227" />
-          <Text style={styles.status}>正在生成特调配图…</Text>
-        </View>
-      ) : null}
-      {message.status && !message.text ? (
-        <Text style={styles.status}>{message.status}</Text>
-      ) : null}
-      {message.text ? (
-        <Text style={[styles.body, isUser && styles.userBody]}>{message.text}</Text>
-      ) : null}
-      {message.imageError ? <Text style={styles.meta}>{message.imageError}</Text> : null}
-      {message.error ? <Text style={styles.error}>{message.error}</Text> : null}
+      </View>
+      <View style={styles.headerActions}>
+        <Pressable style={styles.headerIconBtn} hitSlop={8}>
+          <Ionicons name="search-outline" size={20} color={colors.text} />
+        </Pressable>
+        <Pressable style={styles.headerIconBtn} hitSlop={8}>
+          <Ionicons name="notifications-outline" size={20} color={colors.text} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -189,127 +222,216 @@ function Bubble({ message }: { message: ChatMessage }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#14110F',
-  },
-  header: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-  kicker: {
-    color: '#C9A227',
-    fontSize: 12,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  title: {
-    color: '#F4EDE4',
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  sub: {
-    color: '#8B8178',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  list: {
-    padding: 16,
-    paddingBottom: 24,
-    gap: 12,
-  },
-  bubble: {
-    maxWidth: '88%',
-    borderRadius: 16,
-    padding: 12,
-    gap: 8,
-  },
-  userBubble: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#C9A227',
-  },
-  botBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#1C1816',
-    borderWidth: 1,
-    borderColor: '#2A2420',
+    backgroundColor: colors.background,
   },
   body: {
-    color: '#F4EDE4',
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    borderRadius: 14,
+  },
+  brandCn: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  brandEn: {
+    color: colors.muted,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroCard: {
+    borderRadius: 18,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    minHeight: 148,
+    flexDirection: 'row',
+  },
+  heroGlow: {
+    position: 'absolute',
+    right: -20,
+    top: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.primary,
+    opacity: 0.12,
+  },
+  heroBody: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'center',
+    gap: 8,
+  },
+  heroTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 28,
+  },
+  heroSub: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  heroCta: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  heroCtaText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  heroArt: {
+    width: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingRight: 8,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    color: colors.text,
     fontSize: 16,
-    lineHeight: 24,
+    fontWeight: '700',
   },
-  userBody: {
-    color: '#1C1816',
-  },
-  status: {
-    color: '#C4B8AC',
-    fontSize: 14,
-  },
-  meta: {
-    color: '#8B8178',
+  sectionMore: {
+    color: colors.muted,
     fontSize: 13,
   },
-  error: {
-    color: '#E07070',
-    fontSize: 14,
-  },
-  sources: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    alignItems: 'center',
-  },
-  sourceLabel: {
-    color: '#8B8178',
-    fontSize: 12,
-  },
-  sourceChip: {
-    color: '#C9A227',
-    fontSize: 12,
-    backgroundColor: '#2A2420',
-    overflow: 'hidden',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  photo: {
-    width: 220,
-    height: 160,
-    borderRadius: 12,
-    backgroundColor: '#2A2420',
-  },
-  loadingRow: {
+  recoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 16,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 132,
   },
-  composer: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#2A2420',
-    backgroundColor: '#1C1816',
-  },
-  input: {
+  recoLoading: {
     flex: 1,
-    minHeight: 44,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    color: '#F4EDE4',
-    backgroundColor: '#14110F',
-  },
-  send: {
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#C9A227',
+    paddingVertical: 28,
   },
-  sendDisabled: {
-    opacity: 0.45,
+  recoThumb: {
+    width: 100,
+    height: 100,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  sendText: {
-    color: '#1C1816',
+  recoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  recoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recoName: {
+    flexShrink: 1,
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  recoTag: {
+    backgroundColor: `${colors.primary}33`,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  recoTagText: {
+    color: colors.primary,
+    fontSize: 11,
     fontWeight: '600',
+  },
+  recoMeta: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  quickGrid: {
+    flex: 1,
+    gap: 10,
+    minHeight: 180,
+  },
+  quickRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  quickCard: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 6,
+    justifyContent: 'center',
+  },
+  quickCardMuted: {
+    opacity: 0.55,
+  },
+  quickTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  quickSub: {
+    color: colors.muted,
+    fontSize: 11,
   },
 });

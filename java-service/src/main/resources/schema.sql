@@ -112,6 +112,10 @@ CREATE TABLE IF NOT EXISTS saved_custom (
     garnishes_json       TEXT,
     feeling              VARCHAR(512),
     flavor_summary       TEXT,
+    abv_range            VARCHAR(32),
+    difficulty           VARCHAR(32),
+    taste                VARCHAR(64),
+    flavor_profile_json  TEXT,
     ingredients_json     TEXT         NOT NULL DEFAULT '[]',
     steps_json           TEXT,
     instructions         TEXT,
@@ -121,3 +125,9 @@ CREATE TABLE IF NOT EXISTS saved_custom (
     updated_at           TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_saved_custom_user_id ON saved_custom (user_id);
+
+-- 特调详情风味扩展（已有库增量）
+ALTER TABLE saved_custom ADD COLUMN IF NOT EXISTS abv_range VARCHAR(32);
+ALTER TABLE saved_custom ADD COLUMN IF NOT EXISTS difficulty VARCHAR(32);
+ALTER TABLE saved_custom ADD COLUMN IF NOT EXISTS taste VARCHAR(64);
+ALTER TABLE saved_custom ADD COLUMN IF NOT EXISTS flavor_profile_json TEXT;

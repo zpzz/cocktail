@@ -22,6 +22,7 @@ import com.cocktail.ingredient.mapper.KbIngredientMapper;
 import com.cocktail.shared.exception.BusinessException;
 import com.cocktail.shared.security.SecurityUtils;
 import com.cocktail.workbench.api.WorkbenchDtos.AnalyzeResponse;
+import com.cocktail.workbench.api.WorkbenchDtos.FlavorProfile;
 import com.cocktail.workbench.api.WorkbenchDtos.GenerateRequest;
 import com.cocktail.workbench.api.WorkbenchDtos.GlassItem;
 import com.cocktail.workbench.api.WorkbenchDtos.GlassView;
@@ -162,7 +163,39 @@ public class WorkbenchService {
         String flavor = raw.get("flavor_summary") != null
                 ? String.valueOf(raw.get("flavor_summary"))
                 : (raw.get("flavorSummary") == null ? null : String.valueOf(raw.get("flavorSummary")));
-        return new AnalyzeResponse(feasible, flavor, conflicts, suggestions);
+        FlavorProfile flavorProfile = parseFlavorProfile(raw.get("flavor_profile"));
+        if (flavorProfile == null) {
+            flavorProfile = parseFlavorProfile(raw.get("flavorProfile"));
+        }
+        return new AnalyzeResponse(feasible, flavor, flavorProfile, conflicts, suggestions);
+    }
+
+    private static FlavorProfile parseFlavorProfile(Object raw) {
+        if (!(raw instanceof Map<?, ?> map)) {
+            return null;
+        }
+        return new FlavorProfile(
+                asDouble(map.get("sweetness")),
+                asDouble(map.get("alcohol")),
+                asDouble(map.get("sourness")),
+                asDouble(map.get("aroma")),
+                asDouble(map.get("energy")),
+                asDouble(map.get("difficulty"))
+        );
+    }
+
+    private static Double asDouble(Object v) {
+        if (v instanceof Number n) {
+            return n.doubleValue();
+        }
+        if (v instanceof String s) {
+            try {
+                return Double.parseDouble(s.trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     /** 生成特调：须已选杯且至少一种材料；返回 SSE 流。 */

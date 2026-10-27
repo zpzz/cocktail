@@ -38,6 +38,15 @@ public class SavedCustom {
 
     private String flavorSummary;
 
+    private String abvRange;
+
+    private String difficulty;
+
+    private String taste;
+
+    /** 风味雷达六维 JSON */
+    private String flavorProfileJson;
+
     private String ingredientsJson;
 
     private String stepsJson;

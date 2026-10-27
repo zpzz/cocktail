@@ -6,9 +6,10 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../store';
 import { AuthScreen } from '../screens/AuthScreen';
 import { CabinetScreen } from '../screens/CabinetScreen';
-import { HomeScreen } from '../screens/HomeScreen';
+import { HomeStack } from './HomeStack';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { WorkbenchScreen } from '../screens/WorkbenchScreen';
+import { colors } from '../theme';
 
 export type RootTabParamList = {
   Home: undefined;
@@ -23,11 +24,11 @@ const navTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: '#14110F',
-    card: '#1C1816',
-    text: '#F4EDE4',
-    border: '#2A2420',
-    primary: '#C9A227',
+    background: colors.background,
+    card: colors.card,
+    text: colors.text,
+    border: colors.border,
+    primary: colors.primary,
   },
 };
 
@@ -37,7 +38,7 @@ export function RootNavigator() {
   if (!hydrated) {
     return (
       <View style={styles.boot}>
-        <ActivityIndicator color="#C9A227" size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
@@ -53,18 +54,18 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerStyle: { backgroundColor: '#1C1816' },
-        headerTintColor: '#F4EDE4',
-        tabBarActiveTintColor: '#C9A227',
-        tabBarInactiveTintColor: '#8B8178',
+        headerStyle: { backgroundColor: colors.card },
+        headerTintColor: colors.text,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.muted,
         tabBarHideOnKeyboard: false,
         tabBarStyle: {
-          backgroundColor: '#1C1816',
-          borderTopColor: '#2A2420',
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
         },
         tabBarIcon: ({ color, size }) => {
           const icons: Record<keyof RootTabParamList, keyof typeof Ionicons.glyphMap> = {
-            Home: 'chatbubble-ellipses-outline',
+            Home: 'home-outline',
             Workbench: 'flask-outline',
             Cabinet: 'wine-outline',
             Profile: 'person-outline',
@@ -75,13 +76,13 @@ function MainTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={HomeStack}
         options={{ title: '首页', headerShown: false }}
       />
       <Tab.Screen
         name="Workbench"
         component={WorkbenchScreen}
-        options={{ title: '调配台', headerShown: false }}
+        options={{ title: '工作台', headerShown: false }}
       />
       <Tab.Screen
         name="Cabinet"
@@ -100,7 +101,7 @@ function MainTabs() {
 const styles = StyleSheet.create({
   boot: {
     flex: 1,
-    backgroundColor: '#14110F',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },

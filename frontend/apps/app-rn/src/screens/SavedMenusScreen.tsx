@@ -3,7 +3,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Modal,
@@ -16,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resolveMediaUrl } from '../adapters/apiBase';
 import { menuService } from '../api';
+import { appAlert } from '../components/AppDialog';
 
 type Props = {
   visible: boolean;
@@ -53,7 +53,7 @@ export function SavedMenusScreen({ visible, onClose }: Props) {
       const list = await menuService.list();
       setItems(list ?? []);
     } catch (err) {
-      Alert.alert('加载失败', err instanceof Error ? err.message : '请稍后重试');
+      appAlert('加载失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -74,31 +74,31 @@ export function SavedMenusScreen({ visible, onClose }: Props) {
       const data = await menuService.detail(id);
       setDetail(data);
     } catch (err) {
-      Alert.alert('加载失败', err instanceof Error ? err.message : '请稍后重试');
+      appAlert('加载失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       setDetailLoading(false);
     }
   }
 
+  async function doDelete(item: SavedMenuSummary) {
+    try {
+      await menuService.remove(item.id);
+      if (detail?.id === item.id) {
+        setDetail(null);
+      }
+      await loadList({ silent: true });
+    } catch (err) {
+      appAlert('删除失败', err instanceof Error ? err.message : '请稍后重试');
+    }
+  }
+
   function confirmDelete(item: SavedMenuSummary) {
-    Alert.alert('删除酒单', `确定删除「${item.title}」？`, [
+    appAlert('删除酒单', `确定删除「${item.title}」？`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
         style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              await menuService.remove(item.id);
-              if (detail?.id === item.id) {
-                setDetail(null);
-              }
-              await loadList({ silent: true });
-            } catch (err) {
-              Alert.alert('删除失败', err instanceof Error ? err.message : '请稍后重试');
-            }
-          })();
-        },
+        onPress: () => void doDelete(item),
       },
     ]);
   }
@@ -112,12 +112,12 @@ export function SavedMenusScreen({ visible, onClose }: Props) {
             <Text style={styles.sub}>用库存生成的酒单会自动保存在这里</Text>
           </View>
           <Pressable style={styles.closeBtn} onPress={onClose}>
-            <Ionicons name="close" size={22} color="#C4B8AC" />
+            <Ionicons name="close" size={22} color="#A0A0AA" />
           </Pressable>
         </View>
 
         {loading ? (
-          <ActivityIndicator color="#C9A227" style={{ marginTop: 40 }} />
+          <ActivityIndicator color="#F34B2F" style={{ marginTop: 40 }} />
         ) : (
           <FlatList
             data={items}
@@ -126,7 +126,7 @@ export function SavedMenusScreen({ visible, onClose }: Props) {
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
-                tintColor="#C9A227"
+                tintColor="#F34B2F"
                 onRefresh={() => {
                   setRefreshing(true);
                   void loadList({ silent: true });
@@ -144,12 +144,15 @@ export function SavedMenusScreen({ visible, onClose }: Props) {
                 </View>
                 <Pressable
                   hitSlop={10}
-                  onPress={() => confirmDelete(item)}
+                  onPress={(e) => {
+                    e?.stopPropagation?.();
+                    confirmDelete(item);
+                  }}
                   style={styles.deleteIcon}
                 >
                   <Ionicons name="trash-outline" size={18} color="#E07070" />
                 </Pressable>
-                <Ionicons name="chevron-forward" size={18} color="#6F675F" />
+                <Ionicons name="chevron-forward" size={18} color="#A0A0AA" />
               </Pressable>
             )}
           />
@@ -172,12 +175,12 @@ export function SavedMenusScreen({ visible, onClose }: Props) {
               ) : null}
             </View>
             <Pressable style={styles.closeBtn} onPress={() => setDetail(null)}>
-              <Ionicons name="close" size={22} color="#C4B8AC" />
+              <Ionicons name="close" size={22} color="#A0A0AA" />
             </Pressable>
           </View>
 
           {detailLoading || !detail ? (
-            <ActivityIndicator color="#C9A227" style={{ marginTop: 40 }} />
+            <ActivityIndicator color="#F34B2F" style={{ marginTop: 40 }} />
           ) : (
             <FlatList
               data={detail.recipes}
@@ -201,7 +204,7 @@ function RecipeCard({ item }: { item: MenuRecipe }) {
           <Image source={{ uri }} style={styles.thumb} />
         ) : (
           <View style={[styles.thumb, styles.thumbEmpty]}>
-            <Ionicons name="wine-outline" size={28} color="#6F675F" />
+            <Ionicons name="wine-outline" size={28} color="#A0A0AA" />
           </View>
         )}
         <View style={styles.cardBody}>
@@ -253,7 +256,7 @@ function RecipeCard({ item }: { item: MenuRecipe }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0E0C0B',
+    backgroundColor: '#111111',
   },
   header: {
     flexDirection: 'row',
@@ -262,12 +265,12 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   title: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 22,
     fontWeight: '700',
   },
   sub: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 13,
     marginTop: 4,
   },
@@ -277,14 +280,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
   },
   list: {
     paddingHorizontal: 16,
     paddingBottom: 32,
   },
   empty: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     textAlign: 'center',
     marginTop: 48,
     fontSize: 14,
@@ -292,21 +295,21 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
   },
   rowTitle: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 16,
     fontWeight: '600',
   },
   rowMeta: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 12,
     marginTop: 4,
   },
@@ -317,9 +320,9 @@ const styles = StyleSheet.create({
   menuCard: {
     marginBottom: 12,
     borderRadius: 14,
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     overflow: 'hidden',
   },
   card: {
@@ -331,13 +334,13 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   recipeBlockTitle: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 6,
   },
   recipeBlockText: {
-    color: '#C4B8AC',
+    color: '#A0A0AA',
     fontSize: 13,
     lineHeight: 20,
   },
@@ -345,7 +348,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 10,
-    backgroundColor: '#2A2420',
+    backgroundColor: '#303034',
   },
   thumbEmpty: {
     alignItems: 'center',
@@ -356,12 +359,12 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   name: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 16,
     fontWeight: '600',
   },
   en: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 12,
     marginTop: 2,
   },
@@ -381,11 +384,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   badgeFull: {
-    color: '#1C1816',
-    backgroundColor: '#C9A227',
+    color: '#1B1B1F',
+    backgroundColor: '#F34B2F',
   },
   badgePartial: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     backgroundColor: '#5A4038',
   },
 });

@@ -25,7 +25,18 @@ _SYSTEM = """你是鸡尾酒特调师。根据用户已选的杯型、材料用�
   "ice_type": "none|less|standard|crushed|large",
   "garnishes": ["装饰编码或名称"],
   "feeling": "一句话感觉",
-  "flavor_summary": "风味摘要",
+  "flavor_summary": "风味摘要（一两句，给详情页描述用）",
+  "abv_range": "约 12%",
+  "difficulty": "简单|中等|进阶",
+  "taste": "清爽酸甜等口感标签，四字左右",
+  "flavor_profile": {
+    "sweetness": 0.0,
+    "alcohol": 0.0,
+    "sourness": 0.0,
+    "aroma": 0.0,
+    "energy": 0.0,
+    "difficulty": 0.0
+  },
   "ingredients": [{"name":"材料名","amount":45,"unit":"ml"}],
   "steps": [{"order":1,"text":"步骤说明","duration_sec":null}],
   "instructions": "把步骤连成的完整做法文案"
@@ -34,7 +45,61 @@ _SYSTEM = """你是鸡尾酒特调师。根据用户已选的杯型、材料用�
 - ingredients 优先使用用户已给的材料与用量，可微调但不要删光已选料
 - steps 3~6 步，可操作
 - 酒名要雅致，不要照搬某款经典名
+- flavor_profile 六维取值 0~1，反映真实倾向，不要全是 0.5
 """
+
+_PROFILE_KEYS = ("sweetness", "alcohol", "sourness", "aroma", "energy", "difficulty")
+
+_METHOD_DIFFICULTY = {
+    "build": "简单",
+    "stir": "简单",
+    "shake": "中等",
+    "layer": "进阶",
+}
+
+
+def _clamp01(v: Any, default: float = 0.35) -> float:
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return default
+    return max(0.0, min(1.0, x))
+
+
+def _normalize_profile(raw: Any, method: str) -> dict[str, float]:
+    base_diff = {"build": 0.3, "stir": 0.4, "shake": 0.55, "layer": 0.85}.get(method, 0.45)
+    fallback = {
+        "sweetness": 0.4,
+        "alcohol": 0.5,
+        "sourness": 0.35,
+        "aroma": 0.4,
+        "energy": 0.45,
+        "difficulty": base_diff,
+    }
+    if not isinstance(raw, dict):
+        return {k: round(fallback[k], 2) for k in _PROFILE_KEYS}
+    out = dict(fallback)
+    for key in _PROFILE_KEYS:
+        if key in raw:
+            out[key] = round(_clamp01(raw[key], fallback[key]), 2)
+    return out
+
+
+def _fallback_abv(ingredients: list[Any]) -> str:
+    vol = 0.0
+    for row in ingredients:
+        if isinstance(row, dict) and row.get("amount") is not None:
+            try:
+                vol += float(row["amount"])
+            except (TypeError, ValueError):
+                pass
+    if vol <= 0:
+        return "约 15%"
+    if vol < 90:
+        return "约 22%"
+    if vol < 160:
+        return "约 15%"
+    return "约 10%"
 
 
 def _extract_json(text: str) -> dict[str, Any]:
@@ -91,15 +156,34 @@ def _normalize_recipe(data: dict[str, Any], payload: dict[str, Any]) -> dict[str
     if not isinstance(garnishes, list):
         garnishes = payload.get("garnishes") or []
 
+    method = str(data.get("method") or payload.get("method") or "").strip()
+    abv = str(data.get("abv_range") or data.get("abvRange") or "").strip()
+    if not abv:
+        abv = _fallback_abv(ingredients)
+    difficulty = str(data.get("difficulty") or "").strip()
+    if not difficulty:
+        difficulty = _METHOD_DIFFICULTY.get(method, "中等")
+    taste = str(data.get("taste") or "").strip()
+    if not taste:
+        taste = str(data.get("feeling") or payload.get("feeling") or "风味均衡").strip()[:8] or "风味均衡"
+
+    profile_raw = data.get("flavor_profile")
+    if profile_raw is None:
+        profile_raw = data.get("flavorProfile")
+
     return {
         "name": str(data.get("name") or "未命名特调").strip()[:64],
         "name_en": str(data.get("name_en") or "").strip()[:64],
         "glass": str(data.get("glass") or payload.get("glass_code") or "").strip(),
-        "method": str(data.get("method") or payload.get("method") or "").strip(),
+        "method": method,
         "ice_type": str(data.get("ice_type") or payload.get("ice_type") or "").strip(),
         "garnishes": [str(g) for g in garnishes],
         "feeling": str(data.get("feeling") or payload.get("feeling") or "").strip(),
         "flavor_summary": str(data.get("flavor_summary") or "").strip(),
+        "abv_range": abv[:16],
+        "difficulty": difficulty[:8],
+        "taste": taste[:12],
+        "flavor_profile": _normalize_profile(profile_raw, method),
         "ingredients": ingredients,
         "steps": norm_steps,
         "instructions": instructions,

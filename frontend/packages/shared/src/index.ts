@@ -15,6 +15,7 @@ export {
   createIngredientService,
   type IngredientSearchParams,
 } from './services/ingredients';
+export { createRecipeService } from './services/recipes';
 export {
   createChatService,
   createChatMessage,
@@ -59,6 +60,7 @@ export type {
   MenuIngredient,
   MenuRecipe,
   MenuResponse,
+  RecipeSummary,
   RecognizeMatched,
   RecognizeResponse,
   RegisterRequest,
@@ -67,6 +69,7 @@ export type {
   CustomDetail,
   CustomSummary,
   WorkbenchAnalyze,
+  WorkbenchFlavorProfile,
   WorkbenchGlass,
   WorkbenchOptions,
   WorkbenchIngredientLine,

@@ -5,12 +5,10 @@ import type {
   MenuRecipe,
 } from '@cocktail/shared';
 import { Ionicons } from '@expo/vector-icons';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -27,6 +25,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resolveMediaUrl } from '../adapters/apiBase';
 import { cabinetService, ingredientService } from '../api';
+import { appAlert } from '../components/AppDialog';
+import { colors } from '../theme';
 
 type Panel = 'none' | 'add' | 'edit' | 'menu';
 
@@ -39,7 +39,6 @@ const GRID_ITEM_W =
 
 export function CabinetScreen() {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const [items, setItems] = useState<CabinetItem[]>([]);
   const [itemCount, setItemCount] = useState(0);
   const [categories, setCategories] = useState<CategoryNode[]>([]);
@@ -156,7 +155,7 @@ export function CabinetScreen() {
       });
       setCatalogItems(res.items ?? []);
     } catch (err) {
-      Alert.alert('搜索失败', err instanceof Error ? err.message : '请稍后重试');
+      appAlert('搜索失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       setCatalogLoading(false);
     }
@@ -192,7 +191,7 @@ export function CabinetScreen() {
       setPanel('none');
       await loadList({ silent: true });
     } catch (err) {
-      Alert.alert('添加失败', err instanceof Error ? err.message : '请稍后重试');
+      appAlert('添加失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       setBusy(false);
     }
@@ -223,14 +222,14 @@ export function CabinetScreen() {
       setEditing(null);
       await loadList({ silent: true });
     } catch (err) {
-      Alert.alert('更新失败', err instanceof Error ? err.message : '请稍后重试');
+      appAlert('更新失败', err instanceof Error ? err.message : '请稍后重试');
     } finally {
       setBusy(false);
     }
   }
 
   function confirmDelete(item: CabinetItem) {
-    Alert.alert('删除库存', `确定删除「${item.name}」？`, [
+    appAlert('删除库存', `确定删除「${item.name}」？`, [
       { text: '取消', style: 'cancel' },
       {
         text: '删除',
@@ -241,7 +240,7 @@ export function CabinetScreen() {
               await cabinetService.remove(item.id);
               await loadList({ silent: true });
             } catch (err) {
-              Alert.alert('删除失败', err instanceof Error ? err.message : '请稍后重试');
+              appAlert('删除失败', err instanceof Error ? err.message : '请稍后重试');
             }
           })();
         },
@@ -258,7 +257,7 @@ export function CabinetScreen() {
       setMenuSavedHint(Boolean(res.savedMenuId));
       setPanel('menu');
     } catch (err) {
-      Alert.alert('生成酒单失败', err instanceof Error ? err.message : '请确认 AI 服务已启动');
+      appAlert('生成酒单失败', err instanceof Error ? err.message : '请确认 AI 服务已启动');
     } finally {
       setBusy(false);
     }
@@ -270,7 +269,7 @@ export function CabinetScreen() {
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('需要权限', fromCamera ? '请允许使用相机' : '请允许访问相册');
+      appAlert('需要权限', fromCamera ? '请允许使用相机' : '请允许访问相册');
       return;
     }
 
@@ -321,7 +320,7 @@ export function CabinetScreen() {
       setPanel('add');
 
       if (hits.length === 0) {
-        Alert.alert(
+        appAlert(
           '识别完成',
           unmatched.length > 0
             ? `识别到：${unmatched.join('、')}，但目录中没有匹配材料，可手动搜索添加`
@@ -337,10 +336,10 @@ export function CabinetScreen() {
         if (unmatched.length > 0) {
           parts.push(`未匹配：${unmatched.join('、')}`);
         }
-        Alert.alert('识别完成', parts.join('\n'));
+        appAlert('识别完成', parts.join('\n'));
       }
     } catch (err) {
-      Alert.alert('识别失败', err instanceof Error ? err.message : '请确认 AI 服务已启动并配置千问 VL');
+      appAlert('识别失败', err instanceof Error ? err.message : '请确认 AI 服务已启动并配置千问 VL');
     } finally {
       setBusy(false);
     }
@@ -352,25 +351,25 @@ export function CabinetScreen() {
         <View style={styles.headerText}>
           <Text style={styles.kicker}>Cabinet</Text>
           <Text style={styles.title}>酒柜</Text>
-          <Text style={styles.subtitle}>{itemCount} 款藏品 · 酒方待命</Text>
+          <Text style={styles.subtitle}>{itemCount} 款藏酒 · 今晚喝点什么</Text>
         </View>
         <Pressable
           style={styles.addBtn}
           onPress={() => void openAdd()}
           accessibilityLabel="新增库存"
         >
-          <Ionicons name="add" size={26} color="#C9A227" />
+          <Ionicons name="add" size={26} color="#F34B2F" />
         </Pressable>
       </View>
 
       <View style={styles.searchWrap}>
-        <Ionicons name="sparkles-outline" size={16} color="#8B8178" />
+        <Ionicons name="sparkles-outline" size={16} color="#A0A0AA" />
         <TextInput
           style={styles.searchInput}
           value={q}
           onChangeText={setQ}
           placeholder="搜索品牌 / 类别 / 名称"
-          placeholderTextColor="#8B8178"
+          placeholderTextColor="#A0A0AA"
           returnKeyType="search"
           onSubmitEditing={() => void loadList()}
         />
@@ -385,19 +384,19 @@ export function CabinetScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {loading ? (
-        <ActivityIndicator style={styles.loader} color="#C9A227" />
+        <View style={styles.listFlex}>
+          <ActivityIndicator style={styles.loader} color="#F34B2F" />
+        </View>
       ) : (
         <FlatList
+          style={styles.listFlex}
           data={items}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: tabBarHeight + 88 },
-          ]}
+          contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              tintColor="#C9A227"
+              tintColor="#F34B2F"
               onRefresh={() => {
                 setRefreshing(true);
                 void loadList({ silent: true });
@@ -405,7 +404,7 @@ export function CabinetScreen() {
             />
           }
           ListEmptyComponent={
-            <Text style={styles.empty}>酒柜还是空的，点右上角 + 添加藏品吧。</Text>
+            <Text style={styles.empty}>酒柜还是空的，点右上角 + 添加藏酒吧。</Text>
           }
           renderItem={({ item }) => (
             <Pressable style={styles.card} onPress={() => openEdit(item)} onLongPress={() => confirmDelete(item)}>
@@ -435,13 +434,15 @@ export function CabinetScreen() {
         />
       )}
 
-      <View style={[styles.ctaBar, { bottom: tabBarHeight + 8 }]}>
+      <View style={styles.ctaBar}>
         <Pressable
           style={[styles.ctaBtn, (busy || itemCount === 0) && styles.disabled]}
           disabled={busy || itemCount === 0}
           onPress={() => void generateMenu()}
         >
+          <Ionicons name="sparkles" size={18} color={colors.text} />
           <Text style={styles.ctaText}>用库存生成酒单</Text>
+          <Ionicons name="arrow-forward" size={18} color={colors.text} />
         </Pressable>
       </View>
 
@@ -458,21 +459,21 @@ export function CabinetScreen() {
               </Text>
             </View>
             <Pressable style={styles.closeBtn} onPress={() => setPanel('none')}>
-              <Ionicons name="close" size={22} color="#C4B8AC" />
+              <Ionicons name="close" size={22} color="#A0A0AA" />
             </Pressable>
           </View>
 
           <Pressable style={styles.photoEntry} onPress={() => setPhotoSheetVisible(true)}>
-            <Ionicons name="camera-outline" size={22} color="#C9A227" />
+            <Ionicons name="camera-outline" size={22} color="#F34B2F" />
             <View style={{ flex: 1 }}>
               <Text style={styles.photoEntryTitle}>拍照批量添加</Text>
               <Text style={styles.photoEntrySub}>相机或相册，一次识别多种材料</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#6F675F" />
+            <Ionicons name="chevron-forward" size={18} color="#A0A0AA" />
           </Pressable>
 
           <View style={styles.searchWrap}>
-            <Ionicons name="sparkles-outline" size={16} color="#8B8178" />
+            <Ionicons name="sparkles-outline" size={16} color="#A0A0AA" />
             <TextInput
               style={styles.searchInput}
               value={catalogQ}
@@ -485,7 +486,7 @@ export function CabinetScreen() {
                 }
               }}
               placeholder="输入品牌、酒款或类型，例如金宾、波本"
-              placeholderTextColor="#8B8178"
+              placeholderTextColor="#A0A0AA"
               returnKeyType="search"
               onSubmitEditing={() => {
                 const kw = catalogQ.trim();
@@ -519,7 +520,7 @@ export function CabinetScreen() {
           ) : null}
 
           {catalogLoading ? (
-            <ActivityIndicator color="#C9A227" style={styles.loader} />
+            <ActivityIndicator color="#F34B2F" style={styles.loader} />
           ) : (
             <FlatList
               data={catalogItems}
@@ -551,7 +552,7 @@ export function CabinetScreen() {
                     </Text>
                     {on ? (
                       <View style={styles.gridCheck}>
-                        <Ionicons name="checkmark" size={14} color="#1C1816" />
+                        <Ionicons name="checkmark" size={14} color="#1B1B1F" />
                       </View>
                     ) : null}
                   </Pressable>
@@ -582,7 +583,7 @@ export function CabinetScreen() {
               <Switch
                 value={editKnown}
                 onValueChange={setEditKnown}
-                trackColor={{ true: '#C9A227', false: '#2A2420' }}
+                trackColor={{ true: '#F34B2F', false: '#303034' }}
               />
             </View>
             {editKnown ? (
@@ -593,7 +594,7 @@ export function CabinetScreen() {
                   value={editQty}
                   onChangeText={setEditQty}
                   keyboardType="decimal-pad"
-                  placeholderTextColor="#8B8178"
+                  placeholderTextColor="#A0A0AA"
                   placeholder="例如 750"
                 />
                 <Text style={styles.label}>单位</Text>
@@ -601,7 +602,7 @@ export function CabinetScreen() {
                   style={styles.field}
                   value={editUnit}
                   onChangeText={setEditUnit}
-                  placeholderTextColor="#8B8178"
+                  placeholderTextColor="#A0A0AA"
                   placeholder="ml"
                 />
               </>
@@ -740,7 +741,7 @@ export function CabinetScreen() {
         onRequestClose={() => {}}
       >
         <View style={styles.busyOverlay}>
-          <ActivityIndicator color="#C9A227" size="large" />
+          <ActivityIndicator color="#F34B2F" size="large" />
         </View>
       </Modal>
     </View>
@@ -886,7 +887,7 @@ function Thumb({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0E0C0B',
+    backgroundColor: '#111111',
   },
   header: {
     paddingHorizontal: 20,
@@ -900,19 +901,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   kicker: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 12,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   title: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 28,
     fontWeight: '700',
     marginTop: 2,
   },
   subtitle: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 13,
     marginTop: 4,
   },
@@ -920,9 +921,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1C1816',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -933,16 +934,16 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     paddingHorizontal: 14,
-    backgroundColor: '#1A1614',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   searchInput: {
     flex: 1,
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 15,
     paddingVertical: 0,
   },
@@ -960,12 +961,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryTabText: {
-    color: '#6F675F',
+    color: '#A0A0AA',
     fontSize: 15,
     fontWeight: '500',
   },
   primaryTabTextActive: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontWeight: '700',
   },
   secondaryTabs: {
@@ -979,11 +980,11 @@ const styles = StyleSheet.create({
     minWidth: 36,
   },
   secondaryTabText: {
-    color: '#6F675F',
+    color: '#A0A0AA',
     fontSize: 14,
   },
   secondaryTabTextActive: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontWeight: '600',
   },
   underline: {
@@ -995,7 +996,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   underlineActive: {
-    backgroundColor: '#C9A227',
+    backgroundColor: '#F34B2F',
   },
   addHeader: {
     flexDirection: 'row',
@@ -1005,12 +1006,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   addTitle: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 28,
     fontWeight: '700',
   },
   addSubtitle: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 13,
     marginTop: 4,
   },
@@ -1019,7 +1020,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#3A322C',
+    borderColor: '#303034',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1030,19 +1031,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#3A322C',
+    borderColor: '#303034',
     backgroundColor: '#161210',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   photoEntryTitle: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 15,
     fontWeight: '600',
   },
   photoEntrySub: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 12,
     marginTop: 2,
   },
@@ -1060,12 +1061,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#161210',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     padding: 8,
     gap: 4,
   },
   gridEn: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
@@ -1077,7 +1078,7 @@ const styles = StyleSheet.create({
     minHeight: 30,
   },
   gridMeta: {
-    color: '#6F675F',
+    color: '#A0A0AA',
     fontSize: 10,
   },
   gridCheck: {
@@ -1087,7 +1088,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#C9A227',
+    backgroundColor: '#F34B2F',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1097,19 +1098,24 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A1614',
+    backgroundColor: '#1B1B1F',
     borderWidth: 1,
     borderColor: '#5A4578',
   },
   confirmText: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 16,
     fontWeight: '700',
+  },
+  listFlex: {
+    flex: 1,
   },
   list: {
     paddingHorizontal: 16,
     paddingTop: 12,
+    paddingBottom: 12,
     gap: 12,
+    flexGrow: 1,
   },
   card: {
     flexDirection: 'row',
@@ -1119,16 +1125,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#161210',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
   },
   cardSelected: {
-    borderColor: '#C9A227',
+    borderColor: '#F34B2F',
   },
   thumb: {
     width: 88,
     height: 88,
     borderRadius: 12,
-    backgroundColor: '#0A0908',
+    backgroundColor: '#111111',
   },
   thumbLarge: {
     width: 96,
@@ -1141,19 +1147,19 @@ const styles = StyleSheet.create({
   },
   thumbEmpty: {
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
   },
   cardBody: {
     flex: 1,
     gap: 3,
   },
   name: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 17,
     fontWeight: '600',
   },
   en: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 13,
   },
   meta: {
@@ -1162,12 +1168,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   stock: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 13,
     marginTop: 2,
   },
   link: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1175,7 +1181,7 @@ const styles = StyleSheet.create({
     color: '#E07070',
   },
   empty: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     textAlign: 'center',
     marginTop: 48,
     lineHeight: 22,
@@ -1187,7 +1193,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   warn: {
-    color: '#C9A227',
+    color: '#F34B2F',
     marginHorizontal: 16,
     marginBottom: 8,
     lineHeight: 20,
@@ -1196,21 +1202,29 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   ctaBar: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   ctaBtn: {
-    height: 52,
-    borderRadius: 26,
+    height: 54,
+    borderRadius: 999,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3A2A58',
-    borderWidth: 1,
-    borderColor: '#5A4578',
+    gap: 8,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   ctaText: {
-    color: '#F4EDE4',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -1222,17 +1236,17 @@ const styles = StyleSheet.create({
   },
   modal: {
     flex: 1,
-    backgroundColor: '#0E0C0B',
+    backgroundColor: '#111111',
   },
   modalTitle: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 24,
     fontWeight: '700',
     marginHorizontal: 20,
     marginBottom: 8,
   },
   menuSavedHint: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 13,
     marginHorizontal: 20,
     marginBottom: 10,
@@ -1242,18 +1256,18 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#2A2420',
+    borderTopColor: '#303034',
   },
   primaryBtn: {
     flex: 1,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#C9A227',
+    backgroundColor: '#F34B2F',
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryText: {
-    color: '#1C1816',
+    color: '#1B1B1F',
     fontWeight: '700',
     fontSize: 16,
   },
@@ -1262,12 +1276,12 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#3A322C',
+    borderColor: '#303034',
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondaryText: {
-    color: '#C4B8AC',
+    color: '#A0A0AA',
     fontWeight: '600',
     fontSize: 16,
   },
@@ -1295,13 +1309,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   photoSheetBtn: {
-    backgroundColor: '#2A2420',
+    backgroundColor: '#303034',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
   },
   photoSheetBtnText: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 17,
     fontWeight: '600',
   },
@@ -1310,10 +1324,10 @@ const styles = StyleSheet.create({
   },
   photoSheetCancel: {
     marginTop: 4,
-    backgroundColor: '#1A1614',
+    backgroundColor: '#1B1B1F',
   },
   photoSheetCancelText: {
-    color: '#F4EDE4',
+    color: '#F5F5F5',
     fontSize: 17,
     fontWeight: '600',
   },
@@ -1324,7 +1338,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   label: {
-    color: '#8B8178',
+    color: '#A0A0AA',
     fontSize: 13,
     marginTop: 8,
   },
@@ -1332,17 +1346,17 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     paddingHorizontal: 14,
-    color: '#F4EDE4',
-    backgroundColor: '#0E0C0B',
+    color: '#F5F5F5',
+    backgroundColor: '#111111',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
   },
   menuCard: {
     marginBottom: 12,
     borderRadius: 14,
     backgroundColor: '#161210',
     borderWidth: 1,
-    borderColor: '#2A2420',
+    borderColor: '#303034',
     overflow: 'hidden',
   },
   menuCardTop: {
@@ -1356,13 +1370,13 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   recipeBlockTitle: {
-    color: '#C9A227',
+    color: '#F34B2F',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 6,
   },
   recipeBlockText: {
-    color: '#C4B8AC',
+    color: '#A0A0AA',
     fontSize: 13,
     lineHeight: 20,
   },
@@ -1377,11 +1391,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   badgeFull: {
-    color: '#1C1816',
-    backgroundColor: '#C9A227',
+    color: '#1B1B1F',
+    backgroundColor: '#F34B2F',
   },
   badgePartial: {
-    color: '#C9A227',
+    color: '#F34B2F',
     backgroundColor: '#2A2418',
   },
 });
