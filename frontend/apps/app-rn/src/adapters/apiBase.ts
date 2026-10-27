@@ -1,3 +1,4 @@
+import { resolveMediaUrl as resolveMediaUrlShared } from '@cocktail/shared';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -49,31 +50,7 @@ export function resolveMediaBaseUrl(): string {
   return resolveHostPort(8000);
 }
 
-const MINIO_BUCKET = 'cocktail-images';
-
+/** RN 适配：注入 Expo 解析出的 mediaBaseUrl */
 export function resolveMediaUrl(url?: string | null): string {
-  if (!url) {
-    return '';
-  }
-  if (url.startsWith('/api/media/')) {
-    return `${resolveMediaBaseUrl()}${url}`;
-  }
-  try {
-    const parsed = new URL(url);
-    const marker = `/${MINIO_BUCKET}/`;
-    const index = parsed.pathname.indexOf(marker);
-    if (index < 0) {
-      return url;
-    }
-    const key = parsed.pathname.slice(index + marker.length);
-    const host = parsed.hostname;
-    // 本机 MinIO：走 Python 同源代理，真机/模拟器才能加载
-    if (host === 'localhost' || host === '127.0.0.1' || host === '10.0.2.2') {
-      return `${resolveMediaBaseUrl()}/api/media/${key}`;
-    }
-    // 公网 MinIO：直接用原地址
-    return url;
-  } catch {
-    return url;
-  }
+  return resolveMediaUrlShared(url, { mediaBaseUrl: resolveMediaBaseUrl() });
 }

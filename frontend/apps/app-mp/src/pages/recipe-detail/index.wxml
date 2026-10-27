@@ -1,0 +1,81 @@
+<scroll-view class="detail" scroll-y>
+  <view class="hero">
+    <image wx:if="{{imageUri}}" class="hero-img" src="{{imageUri}}" mode="aspectFill" />
+    <view wx:else class="hero-placeholder">
+      <view wx:if="{{generating}}" class="muted">{{statusText || '配图生成中…'}}</view>
+      <view wx:else class="muted">暂无配图</view>
+    </view>
+  </view>
+
+  <view class="body">
+    <view class="row gap-sm title-row">
+      <text class="name">{{title}}</text>
+      <text wx:if="{{recipe}}" class="tag">{{badge}}</text>
+    </view>
+    <view wx:if="{{nameEn}}" class="muted name-en">{{nameEn}}</view>
+    <view wx:if="{{summary}}" class="summary">{{summary}}</view>
+    <view wx:if="{{generating && !recipe}}" class="summary muted">{{statusText || '正在创作特调…'}}</view>
+
+    <view class="stats row gap-sm">
+      <view class="stat card">
+        <view class="stat-label muted">酒精度</view>
+        <view class="stat-value">{{abv}}</view>
+      </view>
+      <view class="stat card">
+        <view class="stat-label muted">难度</view>
+        <view class="stat-value">{{difficulty}}</view>
+      </view>
+      <view class="stat card">
+        <view class="stat-label muted">口感</view>
+        <view class="stat-value">{{taste}}</view>
+      </view>
+    </view>
+
+    <view class="tabs row">
+      <view
+        wx:for="{{tabs}}"
+        wx:key="key"
+        class="tab {{tab === item.key ? 'tab-on' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="setTab"
+      >{{item.label}}</view>
+    </view>
+
+    <view wx:if="{{tab === 'ingredients'}}" class="panel">
+      <view wx:if="{{!ingredients.length}}" class="muted">暂无材料</view>
+      <view wx:for="{{ingredients}}" wx:key="name" class="ing-row row-between">
+        <text>{{item.name}}</text>
+        <text class="muted">{{item.amountText}}</text>
+      </view>
+    </view>
+
+    <view wx:elif="{{tab === 'steps'}}" class="panel">
+      <view wx:if="{{!steps.length}}" class="muted">暂无步骤</view>
+      <view wx:for="{{steps}}" wx:key="index" class="step-row">
+        <text class="step-n">{{index + 1}}</text>
+        <text class="step-text">{{item}}</text>
+      </view>
+    </view>
+
+    <view wx:else class="panel">
+      <view wx:if="{{!flavorBars.length}}" class="muted">暂无风味数据</view>
+      <view wx:for="{{flavorBars}}" wx:key="label" class="bar-row">
+        <view class="row-between">
+          <text>{{item.label}}</text>
+          <text class="muted">{{item.pct}}%</text>
+        </view>
+        <view class="bar-track">
+          <view class="bar-fill" style="width: {{item.pct}}%;"></view>
+        </view>
+      </view>
+    </view>
+
+    <button
+      wx:if="{{canSave}}"
+      class="btn-primary save"
+      loading="{{saving}}"
+      disabled="{{saving}}"
+      bindtap="onSave"
+    >收藏特调</button>
+  </view>
+</scroll-view>

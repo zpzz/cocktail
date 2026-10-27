@@ -8,6 +8,13 @@ import type {
   WorkbenchRecipe,
   WorkbenchSession,
 } from '@cocktail/shared';
+import {
+  axesFromAnalyze,
+  axesToArray,
+  buildCustomSaveBody,
+  parseWorkbenchGenerateEvent,
+  WORKBENCH_STEPS,
+} from '@cocktail/shared';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -34,13 +41,12 @@ import { WorkbenchStepIndicator } from '../components/WorkbenchStepIndicator';
 import { colors } from '../theme';
 import { GLASS_ICONS } from '../constants/glassIcons';
 import { ICE_ICONS, METHOD_ICONS } from '../constants/workbenchOptionIcons';
-import { axesFromAnalyze, axesToArray } from '../utils/flavorProfile';
 
 const GLASS_COLS = 2;
 const GLASS_GAP = 10;
 const GLASS_PAD = 20;
 
-const STEPS = ['杯型', '材料', '调配'] as const;
+const STEPS = WORKBENCH_STEPS;
 
 const GRID_GAP = 10;
 const GRID_PAD = 16;
@@ -173,24 +179,31 @@ export function WorkbenchScreen() {
       await workbenchService.generate(
         session.sessionId,
         (raw) => {
-          const event = raw as Record<string, unknown>;
-          const type = String(event.type || '');
-          if (type === 'token' && typeof event.text === 'string') {
-            setStatusText(event.text.trim() || '生成中…');
-          } else if (type === 'recipe' && event.recipe && typeof event.recipe === 'object') {
-            nextRecipe = event.recipe as WorkbenchRecipe;
-            setRecipe(nextRecipe);
-            setStatusText('配方已生成，等待配图…');
-          } else if (type === 'image_loading') {
-            setStatusText(String(event.text || '正在生成配图…'));
-          } else if (type === 'image' && typeof event.url === 'string') {
-            nextImage = event.url;
-            setImageUrl(event.url);
-            setStatusText('特调卡片已完成');
-          } else if (type === 'image_error') {
-            setStatusText(String(event.message || '配图失败，仍可查看配方'));
-          } else if (type === 'error') {
-            throw new Error(String(event.message || '生成失败'));
+          const event = parseWorkbenchGenerateEvent(raw);
+          switch (event.kind) {
+            case 'token':
+              setStatusText(event.text);
+              break;
+            case 'recipe':
+              nextRecipe = event.recipe;
+              setRecipe(event.recipe);
+              setStatusText('配方已生成，等待配图…');
+              break;
+            case 'image_loading':
+              setStatusText(event.text);
+              break;
+            case 'image':
+              nextImage = event.url;
+              setImageUrl(event.url);
+              setStatusText('特调卡片已完成');
+              break;
+            case 'image_error':
+              setStatusText(event.message);
+              break;
+            case 'error':
+              throw new Error(event.message);
+            default:
+              break;
           }
         },
         feeling.trim() || undefined,
@@ -221,25 +234,14 @@ export function WorkbenchScreen() {
     }
     setBusy(true);
     try {
-      await customService.save({
-        workbenchSessionId: session.sessionId,
-        name: recipe.name,
-        nameEn: recipe.nameEn,
-        glass: recipe.glass,
-        method: recipe.method,
-        iceType: recipe.iceType || recipe.ice_type,
-        garnishes: recipe.garnishes,
-        feeling: recipe.feeling || feeling,
-        flavorSummary: recipe.flavorSummary || recipe.flavor_summary,
-        abvRange: recipe.abvRange || recipe.abv_range,
-        difficulty: recipe.difficulty,
-        taste: recipe.taste,
-        flavorProfile: recipe.flavorProfile || recipe.flavor_profile || undefined,
-        ingredients: recipe.ingredients,
-        steps: recipe.steps,
-        instructions: recipe.instructions,
-        imageUrl: imageUrl || undefined,
-      });
+      await customService.save(
+        buildCustomSaveBody({
+          recipe,
+          workbenchSessionId: session.sessionId,
+          feelingFallback: feeling,
+          imageUrl,
+        }),
+      );
       // 收藏成功：清空会话选择，回到工作台第一步
       const next = await workbenchService.resetSession(session.sessionId, false);
       setSession(next);
@@ -979,6 +981,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: GLASS_PAD,
     paddingBottom: 8,
   },
+  glassGridList: {
+    flexGrow: 0,
+  },
   glassRow: {
     gap: GLASS_GAP,
     marginBottom: GLASS_GAP,
@@ -1179,6 +1184,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalTitle: { color: '#F5F5F5', fontSize: 22, fontWeight: '700' },
+  sub: { color: '#A0A0AA', fontSize: 13, marginTop: 4 },
   closeBtn: {
     width: 36,
     height: 36,

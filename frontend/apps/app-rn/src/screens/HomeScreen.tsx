@@ -1,4 +1,5 @@
 import type { RecipeSummary } from '@cocktail/shared';
+import { recipeMetaLine } from '@cocktail/shared';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
@@ -52,15 +53,6 @@ type HomeNav = CompositeNavigationProp<
   NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>,
   BottomTabNavigationProp<RootTabParamList>
 >;
-
-function recipeMeta(recipe: RecipeSummary): string {
-  const parts = [
-    recipe.category,
-    recipe.baseSpirit,
-    ...(recipe.flavorTags ?? []).slice(0, 2),
-  ].filter((x): x is string => Boolean(x && String(x).trim()));
-  return parts.length ? parts.join(' · ') : '精选配方';
-}
 
 export function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -155,7 +147,7 @@ export function HomeScreen() {
                   ) : null}
                 </View>
                 <Text style={styles.recoMeta} numberOfLines={2}>
-                  {recipe ? recipeMeta(recipe) : '稍后再试，或点击「换一杯」'}
+                  {recipe ? recipeMetaLine(recipe) : '稍后再试，或点击「换一杯」'}
                 </Text>
               </View>
             </>

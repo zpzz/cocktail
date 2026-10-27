@@ -1,0 +1,76 @@
+<view class="page menus">
+  <block wx:if="{{!detail}}">
+    <view class="header">
+      <view class="title" style="font-size: 44rpx;">酒单</view>
+      <view class="muted">用库存生成的酒单会自动保存在这里</view>
+    </view>
+
+    <view wx:if="{{loading}}" class="loader">加载中…</view>
+    <view wx:elif="{{!items.length}}" class="empty">还没有酒单，去酒柜点「用库存生成酒单」吧</view>
+    <block wx:else>
+      <view
+        wx:for="{{items}}"
+        wx:key="id"
+        class="card row item"
+        data-id="{{item.id}}"
+        bindtap="openDetail"
+      >
+        <view class="flex1">
+          <view class="item-title">{{item.title}}</view>
+          <view class="muted meta">{{item.recipeCount}} 款配方 · {{item.dateLabel}}</view>
+        </view>
+        <view
+          class="del"
+          data-id="{{item.id}}"
+          data-title="{{item.title}}"
+          catchtap="confirmDelete"
+        >删除</view>
+        <text class="chevron muted">›</text>
+      </view>
+    </block>
+  </block>
+
+  <block wx:else>
+    <view class="header row-between">
+      <view class="flex1">
+        <view class="title" style="font-size: 40rpx;">{{detail.title}}</view>
+        <view class="muted">{{detail.recipeCount}} 款 · {{detail.dateLabel}}</view>
+      </view>
+      <view class="close" bindtap="closeDetail">关闭</view>
+    </view>
+
+    <view wx:if="{{detailLoading}}" class="loader">加载中…</view>
+    <block wx:else>
+      <view wx:for="{{detail.recipes}}" wx:key="recipeId" class="menu-card card">
+        <view class="row gap-md">
+          <image
+            wx:if="{{item.imageUri}}"
+            class="thumb"
+            src="{{item.imageUri}}"
+            mode="aspectFill"
+          />
+          <view wx:else class="thumb thumb-empty muted">🍷</view>
+          <view class="flex1">
+            <view class="item-title">{{item.name}}</view>
+            <view wx:if="{{item.nameEn}}" class="muted en">{{item.nameEn}}</view>
+            <view class="muted meta">{{item.meta}}</view>
+            <view class="badge {{item.matchType === 'full' ? 'badge-full' : 'badge-partial'}}">
+              {{item.matchType === 'full' ? '全匹配' : '有缺料'}}
+            </view>
+            <view wx:if="{{item.missingText}}" class="muted meta">缺：{{item.missingText}}</view>
+          </view>
+        </view>
+        <view wx:if="{{item.ingredients && item.ingredients.length}}" class="block">
+          <view class="block-title">材料</view>
+          <view wx:for="{{item.ingredients}}" wx:for-item="ing" wx:key="name" class="muted block-text">
+            · {{ing.name}}{{ing.amountText}}
+          </view>
+        </view>
+        <view wx:if="{{item.instructions}}" class="block">
+          <view class="block-title">做法</view>
+          <view class="muted block-text">{{item.instructions}}</view>
+        </view>
+      </view>
+    </block>
+  </block>
+</view>

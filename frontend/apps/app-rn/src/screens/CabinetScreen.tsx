@@ -4,6 +4,7 @@ import type {
   IngredientItem,
   MenuRecipe,
 } from '@cocktail/shared';
+import { summarizeRecognizeResult } from '@cocktail/shared';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -295,49 +296,16 @@ export function CabinetScreen() {
         name: asset.fileName || 'bottle.jpg',
         type: asset.mimeType || 'image/jpeg',
       });
-      const hits = res.matched ?? [];
-      const keywords = (res.keywords ?? [])
-        .map((k) => k.trim())
-        .filter(Boolean);
-      const unmatched = (res.unmatched ?? []).map((u) => u.rawLabel).filter(Boolean);
-
+      const summary = summarizeRecognizeResult(res);
       // 识别结果只做筛选：展示模糊匹配候选，不自动勾选，由用户确认
-      const candidates: IngredientItem[] = hits.map((h) => ({
-        id: h.ingredientId,
-        name: h.name,
-        nameEn: h.nameEn,
-        category: h.category,
-        subCategory: h.subCategory,
-        imageUrl: h.imageUrl,
-      }));
-      const kwText = keywords.length > 0 ? keywords.join('、') : '';
-      setCatalogQ(kwText);
-      setCatalogSearchActive(keywords.length > 0 || candidates.length > 0);
+      setCatalogQ(summary.keywordText);
+      setCatalogSearchActive(summary.keywords.length > 0 || summary.candidates.length > 0);
       setCatalogCategory(undefined);
       setCatalogSubCategory(undefined);
       setSelectedIds(new Set());
-      setCatalogItems(candidates);
+      setCatalogItems(summary.candidates);
       setPanel('add');
-
-      if (hits.length === 0) {
-        appAlert(
-          '识别完成',
-          unmatched.length > 0
-            ? `识别到：${unmatched.join('、')}，但目录中没有匹配材料，可手动搜索添加`
-            : '没有识别出可用品牌，请换一张更清晰的酒瓶正面照，或手动搜索添加',
-        );
-      } else {
-        const parts = [
-          keywords.length > 0
-            ? `识别到「${keywords.join('、')}」`
-            : '识别完成',
-          `已筛出 ${hits.length} 项候选，请勾选要加入酒柜的材料`,
-        ];
-        if (unmatched.length > 0) {
-          parts.push(`未匹配：${unmatched.join('、')}`);
-        }
-        appAlert('识别完成', parts.join('\n'));
-      }
+      appAlert(summary.alertTitle, summary.alertMessage);
     } catch (err) {
       appAlert('识别失败', err instanceof Error ? err.message : '请确认 AI 服务已启动并配置千问 VL');
     } finally {

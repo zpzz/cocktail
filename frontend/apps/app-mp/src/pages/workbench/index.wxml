@@ -1,0 +1,213 @@
+<view class="page workbench">
+  <view wx:if="{{booting}}" class="loader">正在打开调配台…</view>
+
+  <block wx:else>
+    <view class="toolbar row-between">
+      <view />
+      <view class="reset" bindtap="onReset">重置</view>
+    </view>
+
+    <view class="steps">
+      <view
+        wx:for="{{steps}}"
+        wx:key="*this"
+        class="step-item"
+      >
+        <view
+          wx:if="{{index > 0}}"
+          class="step-line {{currentStep >= index ? 'step-line-on' : ''}}"
+        />
+        <view class="step-dot {{currentStep >= index ? 'step-dot-on' : ''}}">
+          <text class="step-dot-text {{currentStep >= index ? 'step-dot-text-on' : ''}}">{{index + 1}}</text>
+        </view>
+        <text class="step-label {{currentStep === index ? 'step-label-on' : ''}}">{{item}}</text>
+      </view>
+    </view>
+
+    <!-- 杯型 -->
+    <scroll-view wx:if="{{currentStep === 0}}" class="body-scroll" scroll-y>
+      <view class="step-heading">选择杯型</view>
+      <view class="glass-grid">
+        <view
+          wx:for="{{glasses}}"
+          wx:key="code"
+          class="glass-card card {{selectedGlassCode === item.code ? 'on' : ''}}"
+          data-code="{{item.code}}"
+          bindtap="selectGlass"
+        >
+          <image class="glass-img" src="{{item.icon}}" mode="aspectFit" />
+          <view class="glass-name">{{item.name}}</view>
+          <view class="muted glass-cap">{{item.capacityMl}} ml</view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <!-- 材料 -->
+    <scroll-view wx:elif="{{currentStep === 1}}" class="body-scroll" scroll-y>
+      <view class="step-heading row-between">
+        <text>选择材料</text>
+        <text class="link" bindtap="openPicker">+ 添加</text>
+      </view>
+      <view wx:if="{{!ingredients.length}}" class="empty" style="margin-top: 48rpx;">
+        至少选择一种基酒或利口酒
+      </view>
+      <view
+        wx:for="{{ingredients}}"
+        wx:key="ingredientId"
+        class="card ing-card row gap-md"
+      >
+        <image
+          wx:if="{{item.imageUri}}"
+          class="ing-thumb"
+          src="{{item.imageUri}}"
+          mode="aspectFill"
+        />
+        <view wx:else class="ing-thumb ing-thumb-empty">🍷</view>
+        <view class="flex1">
+          <view class="ing-name">{{item.name}}</view>
+        </view>
+        <view class="del" data-id="{{item.ingredientId}}" bindtap="removeIngredient">移除</view>
+      </view>
+    </scroll-view>
+
+    <!-- 调配 -->
+    <scroll-view wx:else class="body-scroll" scroll-y>
+      <view class="step-heading">调配技法</view>
+      <scroll-view scroll-x class="opt-scroll">
+        <view
+          wx:for="{{methods}}"
+          wx:key="code"
+          class="opt-card card {{selectedMethod === item.code ? 'on' : ''}}"
+          data-code="{{item.code}}"
+          bindtap="selectMethod"
+        >
+          <view class="opt-cn">{{item.name}}</view>
+          <view wx:if="{{item.nameEn}}" class="muted opt-en">({{item.nameEn}})</view>
+        </view>
+      </scroll-view>
+
+      <view class="step-heading">选择冰型</view>
+      <view class="ice-grid">
+        <view
+          wx:for="{{iceTypes}}"
+          wx:key="code"
+          class="ice-card card {{selectedIce === item.code ? 'on' : ''}}"
+          data-code="{{item.code}}"
+          bindtap="selectIce"
+        >{{item.name}}</view>
+      </view>
+
+      <input
+        class="input feeling"
+        placeholder="例如：清爽、微苦、适合晚餐"
+        placeholder-class="ph"
+        value="{{feeling}}"
+        bindinput="onFeeling"
+      />
+
+      <view class="analyze card">
+        <view class="row-between">
+          <view class="analyze-title">AI 风味分析</view>
+          <view class="link" bindtap="onAnalyze">酒方分析</view>
+        </view>
+        <view wx:if="{{analyzeStatus}}" class="analyze-status {{analyzeOk ? 'ok' : 'warn'}}">
+          {{analyzeStatus}}
+        </view>
+        <view class="muted analyze-desc">{{analyzeDescription}}</view>
+        <view wx:for="{{flavorBars}}" wx:key="label" class="bar-row">
+          <view class="row-between">
+            <text>{{item.label}}</text>
+            <text class="muted">{{item.pct}}%</text>
+          </view>
+          <view class="bar-track">
+            <view class="bar-fill" style="width: {{item.pct}}%;"></view>
+          </view>
+        </view>
+        <view wx:for="{{suggestions}}" wx:key="*this" class="muted suggest">· {{item}}</view>
+      </view>
+    </scroll-view>
+
+    <view class="footer">
+      <view wx:if="{{currentStep > 0}}" class="btn-ghost back" bindtap="goPrev">上一步</view>
+      <button
+        class="btn-primary next"
+        loading="{{busy || generating}}"
+        disabled="{{busy || generating}}"
+        bindtap="onPrimary"
+      >{{nextLabel}}</button>
+    </view>
+  </block>
+
+  <!-- 添加材料：与酒柜「新增库存」同款底部弹窗 -->
+  <view wx:if="{{pickerVisible}}" class="modal" catchtouchmove="noop">
+    <view class="modal-mask" bindtap="closePicker"></view>
+    <view class="modal-panel">
+      <view class="row-between">
+        <view>
+          <view class="modal-title">添加材料</view>
+          <view class="muted modal-sub">
+            {{pickerSearchActive ? '已按搜索结果筛选，请勾选要加入的材料' : '可多选，点下方确认后加入调配台'}}
+          </view>
+        </view>
+        <view class="close" bindtap="closePicker">关闭</view>
+      </view>
+
+      <input
+        class="input"
+        placeholder="输入品牌、酒款或类型"
+        placeholder-class="ph"
+        value="{{pickerQ}}"
+        bindinput="onPickerQ"
+        bindconfirm="searchPickerConfirm"
+        confirm-type="search"
+      />
+
+      <scroll-view wx:if="{{!pickerSearchActive}}" scroll-x class="cat-scroll">
+        <view
+          wx:for="{{categories}}"
+          wx:key="code"
+          class="cat-chip {{pickerCategory === item.code ? 'cat-on' : ''}}"
+          data-code="{{item.code}}"
+          bindtap="selectPickerCategory"
+        >{{item.name}}</view>
+      </scroll-view>
+
+      <view wx:if="{{pickerLoading}}" class="loader">搜索中…</view>
+      <scroll-view wx:else scroll-y class="picker-list">
+        <view wx:if="{{!pickerItems.length}}" class="empty">没有匹配材料</view>
+        <view class="picker-grid">
+          <view
+            wx:for="{{pickerItems}}"
+            wx:key="id"
+            class="picker-card {{pickerSelected[item.id] ? 'picker-card-on' : ''}}"
+            data-id="{{item.id}}"
+            data-name="{{item.name}}"
+            bindtap="togglePicker"
+          >
+            <image
+              wx:if="{{item.imageUri}}"
+              class="picker-thumb"
+              src="{{item.imageUri}}"
+              mode="aspectFill"
+            />
+            <view wx:else class="picker-thumb picker-thumb-empty">🍷</view>
+            <view class="picker-en">{{item.nameEn || item.name}}</view>
+            <view class="picker-name">{{item.name}}</view>
+            <view class="muted picker-meta">
+              {{item.subCategory ? '属于' + item.subCategory : (item.category ? '属于' + item.category : '')}}
+            </view>
+            <view wx:if="{{pickerSelected[item.id]}}" class="picker-check">✓</view>
+            <view wx:else class="picker-add">+</view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <button
+        class="btn-primary"
+        loading="{{busy}}"
+        disabled="{{busy || pickerCount === 0}}"
+        bindtap="confirmPicker"
+      >确认添加 ({{pickerCount}})</button>
+    </view>
+  </view>
+</view>

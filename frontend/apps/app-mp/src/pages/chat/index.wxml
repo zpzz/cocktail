@@ -1,0 +1,68 @@
+<view class="chat">
+  <scroll-view
+    class="list"
+    scroll-y
+    scroll-into-view="{{scrollInto}}"
+    scroll-with-animation
+  >
+    <view
+      wx:for="{{messages}}"
+      wx:key="id"
+      id="m-{{item.id}}"
+      class="msg {{item.role === 'user' ? 'msg-user' : 'msg-bot'}}"
+    >
+      <image
+        wx:if="{{item.role === 'assistant'}}"
+        class="avatar"
+        src="/assets/images/jiufang-logo.png"
+        mode="aspectFill"
+      />
+      <view class="bubble {{item.role === 'user' ? 'bubble-user' : 'bubble-bot'}}">
+        <view wx:if="{{item.sources && item.sources.length}}" class="sources">
+          <text class="source-label muted">
+            {{item.sourceRole === 'reference' ? '参考配方' : '库内配方'}}
+          </text>
+          <text wx:for="{{item.sources}}" wx:for-item="src" wx:key="id" class="source-chip">
+            {{src.name}}
+          </text>
+        </view>
+        <block wx:for="{{item.images}}" wx:for-item="img" wx:key="url">
+          <image
+            wx:if="{{img.resolvedUrl}}"
+            class="photo"
+            src="{{img.resolvedUrl}}"
+            mode="aspectFill"
+          />
+        </block>
+        <image
+          wx:if="{{item.generatedImageUrl}}"
+          class="photo"
+          src="{{item.resolvedGenUrl}}"
+          mode="aspectFill"
+        />
+        <view wx:if="{{item.imageLoading}}" class="status muted">正在生成特调配图…</view>
+        <view wx:if="{{item.status && !item.text}}" class="status muted">{{item.status}}</view>
+        <text wx:if="{{item.text}}" class="body">{{item.text}}</text>
+        <view wx:if="{{item.imageError}}" class="muted">{{item.imageError}}</view>
+        <view wx:if="{{item.error}}" class="error">{{item.error}}</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="composer">
+    <input
+      class="composer-input"
+      placeholder="请输入你的问题…"
+      placeholder-class="ph"
+      value="{{draft}}"
+      bindinput="onDraft"
+      disabled="{{sending}}"
+      confirm-type="send"
+      bindconfirm="send"
+    />
+    <view
+      class="send {{canSend ? '' : 'send-off'}}"
+      bindtap="send"
+    >{{sending ? '…' : '发送'}}</view>
+  </view>
+</view>

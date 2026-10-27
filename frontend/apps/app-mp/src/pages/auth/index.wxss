@@ -1,0 +1,44 @@
+@import "../../styles/common.wxss";
+
+.auth {
+  min-height: 100vh;
+  padding: 160rpx 56rpx 80rpx;
+  background: #111111;
+}
+
+.brand {
+  color: #f34b2f;
+  font-size: 80rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.brand-en {
+  color: #a0a0aa;
+  font-size: 24rpx;
+  letter-spacing: 4rpx;
+  font-weight: 600;
+  margin-top: 8rpx;
+}
+
+.sub {
+  margin-top: 20rpx;
+  font-size: 32rpx;
+  line-height: 1.5;
+}
+
+.form {
+  margin-top: 72rpx;
+}
+
+.ph {
+  color: #a0a0aa;
+}
+
+.switch {
+  margin-top: 32rpx;
+  text-align: center;
+  color: #f34b2f;
+  font-size: 28rpx;
+  padding: 16rpx;
+}

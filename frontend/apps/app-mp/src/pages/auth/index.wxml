@@ -1,0 +1,45 @@
+<view class="auth">
+  <view class="brand">酒方</view>
+  <view class="brand-en">JIUFANG</view>
+  <view class="sub muted">{{mode === 'login' ? '登录后开始对话与酒柜管理' : '创建账号，解锁个性化推荐'}}</view>
+
+  <view class="form">
+    <input
+      class="input"
+      placeholder="用户名"
+      placeholder-class="ph"
+      value="{{username}}"
+      bindinput="onUsername"
+      disabled="{{busy}}"
+    />
+    <input
+      wx:if="{{mode === 'register'}}"
+      class="input"
+      placeholder="昵称（可选）"
+      placeholder-class="ph"
+      value="{{nickname}}"
+      bindinput="onNickname"
+      disabled="{{busy}}"
+    />
+    <input
+      class="input"
+      password
+      placeholder="密码"
+      placeholder-class="ph"
+      value="{{password}}"
+      bindinput="onPassword"
+      disabled="{{busy}}"
+      bindconfirm="submit"
+    />
+
+    <view wx:if="{{error}}" class="error">{{error}}</view>
+
+    <button class="btn-primary" loading="{{busy}}" disabled="{{busy}}" bindtap="submit">
+      {{mode === 'login' ? '登录' : '注册并登录'}}
+    </button>
+
+    <view class="switch" bindtap="toggleMode">
+      {{mode === 'login' ? '没有账号？去注册' : '已有账号？去登录'}}
+    </view>
+  </view>
+</view>

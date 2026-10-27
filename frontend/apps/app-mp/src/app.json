@@ -1,0 +1,55 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/workbench/index",
+    "pages/cabinet/index",
+    "pages/profile/index",
+    "pages/auth/index",
+    "pages/chat/index",
+    "pages/customs/index",
+    "pages/menus/index",
+    "pages/recipe-detail/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#1B1B1F",
+    "navigationBarTitleText": "酒方",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#111111",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#A0A0AA",
+    "selectedColor": "#F34B2F",
+    "backgroundColor": "#1B1B1F",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "assets/images/tab-home.png",
+        "selectedIconPath": "assets/images/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/workbench/index",
+        "text": "工作台",
+        "iconPath": "assets/images/tab-workbench.png",
+        "selectedIconPath": "assets/images/tab-workbench-active.png"
+      },
+      {
+        "pagePath": "pages/cabinet/index",
+        "text": "酒柜",
+        "iconPath": "assets/images/tab-cabinet.png",
+        "selectedIconPath": "assets/images/tab-cabinet-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "assets/images/tab-profile.png",
+        "selectedIconPath": "assets/images/tab-profile-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
+}

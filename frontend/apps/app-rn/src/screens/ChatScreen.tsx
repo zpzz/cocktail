@@ -1,6 +1,7 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import {
+  CHAT_WELCOME_TEXT,
   createChatMessage,
   createThreadId,
   reduceAssistantMessage,
@@ -30,7 +31,7 @@ const LOGO = require('../../assets/images/jiufang-logo.png');
 const WELCOME: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  text: '告诉我你的口味偏好，我可以帮你查经典配方、推荐特调，或结合你的酒柜给建议。',
+  text: CHAT_WELCOME_TEXT,
 };
 
 export function ChatScreen() {

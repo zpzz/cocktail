@@ -1,0 +1,189 @@
+<view class="page cabinet">
+  <view class="toolbar row-between">
+    <view class="muted">{{itemCount}} 款藏酒 · 今晚喝点什么</view>
+    <view class="add-btn" bindtap="openAdd">+</view>
+  </view>
+
+  <view class="search-wrap row gap-sm">
+    <input
+      class="search-input"
+      placeholder="搜索品牌 / 类别 / 名称"
+      placeholder-class="ph"
+      value="{{q}}"
+      bindinput="onQ"
+      confirm-type="search"
+      bindconfirm="loadList"
+    />
+  </view>
+
+  <scroll-view scroll-x class="cat-scroll">
+    <view
+      wx:for="{{categories}}"
+      wx:key="code"
+      class="cat-chip {{category === item.code ? 'cat-on' : ''}}"
+      data-code="{{item.code}}"
+      bindtap="selectCategory"
+    >{{item.name}}</view>
+  </scroll-view>
+
+  <view wx:if="{{error}}" class="error">{{error}}</view>
+  <view wx:if="{{loading}}" class="loader">加载中…</view>
+  <scroll-view wx:else class="list" scroll-y>
+    <view wx:if="{{!items.length}}" class="empty">酒柜还是空的，点右上角 + 添加藏酒吧。</view>
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="card item row gap-md"
+      data-id="{{item.id}}"
+      bindtap="openEdit"
+      bindlongpress="confirmDelete"
+    >
+      <image wx:if="{{item.imageUri}}" class="thumb" src="{{item.imageUri}}" mode="aspectFill" />
+      <view wx:else class="thumb thumb-empty muted">🍷</view>
+      <view class="flex1">
+        <view class="name">{{item.name}}</view>
+        <view wx:if="{{item.nameEn}}" class="muted en">{{item.nameEn}}</view>
+        <view class="muted meta">{{item.meta}}</view>
+        <view class="stock">{{item.stockLabel}}</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="cta-bar">
+    <button
+      class="btn-primary cta"
+      loading="{{busy}}"
+      disabled="{{busy || itemCount === 0}}"
+      bindtap="generateMenu"
+    >用库存生成酒单 →</button>
+  </view>
+
+  <!-- 新增库存 -->
+  <view wx:if="{{panel === 'add'}}" class="modal">
+    <view class="modal-panel">
+      <view class="row-between">
+        <view>
+          <view class="modal-title">新增库存</view>
+          <view class="muted modal-sub">
+            {{catalogSearchActive ? '已按识别/搜索结果筛选，请勾选要添加的材料' : '选择要加入家中酒柜的真实品牌'}}
+          </view>
+        </view>
+        <view class="close" bindtap="closePanel">关闭</view>
+      </view>
+
+      <view class="photo-entry card row gap-md" bindtap="chooseRecognize">
+        <view class="photo-icon">📷</view>
+        <view class="flex1">
+          <view class="name">拍照批量添加</view>
+          <view class="muted meta">相机或相册，一次识别多种材料</view>
+        </view>
+        <text class="muted">›</text>
+      </view>
+
+      <input
+        class="input"
+        placeholder="搜索材料"
+        placeholder-class="ph"
+        value="{{catalogQ}}"
+        bindinput="onCatalogQ"
+        confirm-type="search"
+        bindconfirm="searchCatalogConfirm"
+      />
+
+      <scroll-view wx:if="{{!catalogSearchActive}}" scroll-x class="cat-scroll">
+        <view
+          wx:for="{{categories}}"
+          wx:key="code"
+          class="cat-chip {{catalogCategory === item.code ? 'cat-on' : ''}}"
+          data-code="{{item.code}}"
+          bindtap="selectCatalogCategory"
+        >{{item.name}}</view>
+      </scroll-view>
+
+      <view wx:if="{{catalogLoading}}" class="loader">搜索中…</view>
+      <scroll-view wx:else scroll-y class="catalog-list">
+        <view wx:if="{{!catalogItems.length}}" class="empty">没有匹配材料</view>
+        <view class="catalog-grid">
+          <view
+            wx:for="{{catalogItems}}"
+            wx:key="id"
+            class="catalog-card {{selectedIds[item.id] ? 'catalog-card-on' : ''}}"
+            data-id="{{item.id}}"
+            bindtap="toggleSelect"
+          >
+            <image
+              wx:if="{{item.imageUri}}"
+              class="catalog-thumb"
+              src="{{item.imageUri}}"
+              mode="aspectFill"
+            />
+            <view wx:else class="catalog-thumb catalog-thumb-empty">🍷</view>
+            <view class="catalog-en">{{item.nameEn || item.name}}</view>
+            <view class="catalog-name">{{item.name}}</view>
+            <view class="muted catalog-meta">
+              {{item.subCategory ? '属于' + item.subCategory : (item.category ? '属于' + item.category : '')}}
+            </view>
+            <view wx:if="{{selectedIds[item.id]}}" class="catalog-check">✓</view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <button class="btn-primary" loading="{{busy}}" bindtap="confirmAdd">确认添加</button>
+    </view>
+  </view>
+
+  <!-- 编辑 -->
+  <view wx:if="{{panel === 'edit' && editing}}" class="modal">
+    <view class="modal-panel">
+      <view class="row-between">
+        <view class="modal-title">编辑 · {{editing.name}}</view>
+        <view class="close" bindtap="closePanel">关闭</view>
+      </view>
+      <view class="row-between switch-row">
+        <text>已知余量</text>
+        <switch checked="{{editKnown}}" bindchange="onEditKnown" color="#F34B2F" />
+      </view>
+      <input
+        wx:if="{{editKnown}}"
+        class="input"
+        type="digit"
+        placeholder="数量"
+        placeholder-class="ph"
+        value="{{editQty}}"
+        bindinput="onEditQty"
+      />
+      <input
+        class="input"
+        placeholder="单位"
+        placeholder-class="ph"
+        value="{{editUnit}}"
+        bindinput="onEditUnit"
+      />
+      <button class="btn-primary" loading="{{busy}}" bindtap="saveEdit">保存</button>
+      <button class="btn-danger" style="margin-top: 20rpx;" data-id="{{editing.id}}" data-name="{{editing.name}}" bindtap="confirmDelete">删除</button>
+    </view>
+  </view>
+
+  <!-- 酒单结果 -->
+  <view wx:if="{{panel === 'menu'}}" class="modal">
+    <view class="modal-panel">
+      <view class="row-between">
+        <view>
+          <view class="modal-title">库存酒单</view>
+          <view wx:if="{{menuSavedHint}}" class="muted modal-sub">已自动保存到「我的 → 酒单」</view>
+        </view>
+        <view class="close" bindtap="closePanel">关闭</view>
+      </view>
+      <scroll-view scroll-y class="menu-list">
+        <view wx:for="{{menuRecipes}}" wx:key="recipeId" class="card menu-card">
+          <view class="name">{{item.name}}</view>
+          <view wx:if="{{item.nameEn}}" class="muted en">{{item.nameEn}}</view>
+          <view class="badge {{item.matchType === 'full' ? 'badge-full' : 'badge-partial'}}">
+            {{item.matchType === 'full' ? '全匹配' : '有缺料'}}
+          </view>
+          <view wx:if="{{item.missingText}}" class="muted meta">缺：{{item.missingText}}</view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</view>

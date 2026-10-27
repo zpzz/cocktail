@@ -6,11 +6,14 @@ export type {
   StreamOptions,
 } from './http/client';
 export { API_PATHS, API_PREFIX } from './constants/api';
+export { CHAT_WELCOME_TEXT } from './constants/chat';
+export { WORKBENCH_STEPS, type WorkbenchStepLabel } from './constants/workbench';
+export { colors, type ThemeColors } from './theme';
 export { createAuthService } from './services/auth';
 export { createCabinetService, type CabinetListParams } from './services/cabinet';
 export { createMenuService } from './services/menus';
 export { createWorkbenchService } from './services/workbench';
-export { createCustomService } from './services/customs';
+export { createCustomService, type CustomSaveBody } from './services/customs';
 export {
   createIngredientService,
   type IngredientSearchParams,
@@ -30,6 +33,34 @@ export {
 } from './utils/chat';
 export { consumeSseBuffer, readSseStream, type SseEventHandler } from './utils/sse';
 export { createThreadId } from './utils/id';
+export {
+  axesFromAnalyze,
+  axesToArray,
+  deriveFlavorAxes,
+  FLAVOR_AXIS_LABELS,
+  type FlavorAxes,
+} from './utils/flavorProfile';
+export {
+  formatIngredientAmount,
+  formatShortDateTime,
+  methodDifficultyLabel,
+  recipeMetaLine,
+} from './utils/format';
+export {
+  buildCustomSaveBody,
+  customDetailToRecipe,
+  pickRecipeProfile,
+} from './utils/customRecipe';
+export {
+  parseWorkbenchGenerateEvent,
+  type WorkbenchGenerateEvent,
+} from './utils/workbenchGenerate';
+export {
+  matchedToIngredientCandidates,
+  summarizeRecognizeResult,
+  type RecognizeUiSummary,
+} from './utils/recognize';
+export { resolveMediaUrl, type ResolveMediaUrlOptions } from './utils/mediaUrl';
 export {
   createAppStore,
   authHydrated,

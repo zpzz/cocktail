@@ -1,0 +1,58 @@
+<view class="home">
+  <view class="header row-between">
+    <view class="brand-row row gap-sm">
+      <image class="logo" src="/assets/images/jiufang-logo.png" mode="aspectFill" />
+      <view>
+        <view class="brand-cn">酒方</view>
+        <view class="brand-en">JIUFANG</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="body">
+    <view class="hero card">
+      <view class="hero-glow" />
+      <view class="hero-body">
+        <view class="hero-title">AI 为你调一杯
+专属鸡尾酒</view>
+        <view class="hero-sub muted">告诉我你的口味偏好，让 AI 为你推荐最适合的配方</view>
+        <view class="hero-cta" bindtap="openChat">开始对话 →</view>
+      </view>
+    </view>
+
+    <view class="section-head row-between">
+      <text class="section-title">今日推荐</text>
+      <text class="section-more muted" bindtap="loadRecommend">换一杯</text>
+    </view>
+
+    <view class="reco card" bindtap="openRecipe">
+      <view wx:if="{{loadingReco}}" class="loader">加载中…</view>
+      <block wx:else>
+        <view class="reco-thumb">
+          <image wx:if="{{imageUri}}" class="reco-img" src="{{imageUri}}" mode="aspectFill" />
+          <text wx:else class="muted">🍷</text>
+        </view>
+        <view class="reco-body">
+          <view class="row gap-sm">
+            <text class="reco-name">{{recipeName}}</text>
+            <text wx:if="{{recipe}}" class="tag">热门</text>
+          </view>
+          <text class="reco-meta muted">{{recipeMeta}}</text>
+        </view>
+      </block>
+    </view>
+
+    <view class="quick-grid">
+      <view
+        wx:for="{{entries}}"
+        wx:key="key"
+        class="quick-card card {{item.muted ? 'quick-muted' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="onQuick"
+      >
+        <view class="quick-title">{{item.title}}</view>
+        <view class="quick-sub muted">{{item.sub}}</view>
+      </view>
+    </view>
+  </view>
+</view>

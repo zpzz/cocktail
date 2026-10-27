@@ -1,0 +1,19 @@
+{
+  "name": "@cocktail/app-mp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "酒方微信小程序（高度还原 App 功能与视觉）",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "dev": "node ./scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cocktail/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "miniprogram-api-typings": "^4.0.0",
+    "typescript": "~6.0.3"
+  }
+}

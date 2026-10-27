@@ -1,4 +1,11 @@
-import type { MenuIngredient, WorkbenchFlavorProfile, WorkbenchRecipe } from '@cocktail/shared';
+import type { WorkbenchRecipe } from '@cocktail/shared';
+import {
+  axesFromAnalyze,
+  axesToArray,
+  formatIngredientAmount,
+  methodDifficultyLabel,
+  pickRecipeProfile,
+} from '@cocktail/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import {
@@ -14,7 +21,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resolveMediaUrl } from '../adapters/apiBase';
 import { colors } from '../theme';
-import { axesFromAnalyze, axesToArray } from '../utils/flavorProfile';
 import { FlavorRadarChart } from './FlavorRadarChart';
 
 type IngredientThumb = {
@@ -49,34 +55,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'flavor', label: '风味解析' },
 ];
 
-function pickProfile(recipe: WorkbenchRecipe | null): WorkbenchFlavorProfile | null {
-  if (!recipe) {
-    return null;
-  }
-  return recipe.flavorProfile ?? recipe.flavor_profile ?? null;
-}
-
-function formatAmount(ing: MenuIngredient): string {
-  if (ing.amount != null && ing.amount !== undefined) {
-    return `${ing.amount}${ing.unit || ''}`;
-  }
-  return ing.unit || '';
-}
-
-function methodDifficulty(method?: string): string {
-  switch (method) {
-    case 'layer':
-      return '进阶';
-    case 'shake':
-      return '中等';
-    case 'stir':
-    case 'build':
-      return '简单';
-    default:
-      return '中等';
-  }
-}
-
 export function RecipeDetailView({
   recipe,
   imageUrl,
@@ -109,11 +87,11 @@ export function RecipeDetailView({
   const title = recipe?.name || (generating ? '生成中…' : '特调详情');
   const summary = recipe?.flavorSummary || recipe?.flavor_summary || '';
   const abv = recipe?.abvRange || recipe?.abv_range || '—';
-  const difficulty = recipe?.difficulty || methodDifficulty(recipe?.method);
+  const difficulty = recipe?.difficulty || methodDifficultyLabel(recipe?.method);
   const taste = recipe?.taste || recipe?.feeling || '—';
 
   const profileAxes = useMemo(() => {
-    const fromAi = axesFromAnalyze(pickProfile(recipe));
+    const fromAi = axesFromAnalyze(pickRecipeProfile(recipe));
     return fromAi ? axesToArray(fromAi) : [];
   }, [recipe]);
 
@@ -276,7 +254,7 @@ export function RecipeDetailView({
                       <Text style={styles.ingName} numberOfLines={1}>
                         {ing.name}
                       </Text>
-                      <Text style={styles.ingAmount}>{formatAmount(ing)}</Text>
+                      <Text style={styles.ingAmount}>{formatIngredientAmount(ing)}</Text>
                     </View>
                   );
                 })

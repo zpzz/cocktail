@@ -1,0 +1,35 @@
+<view class="page profile">
+  <view class="identity card row gap-md">
+    <view class="avatar">
+      <text class="avatar-text">{{initial}}</text>
+    </view>
+    <view class="identity-body">
+      <view class="identity-name">{{displayName}}</view>
+      <view wx:if="{{username}}" class="muted">@{{username}}</view>
+    </view>
+  </view>
+
+  <view class="section-label">收藏</view>
+
+  <view class="menu-entry card row gap-md" bindtap="goMenus">
+    <view class="menu-icon">酒</view>
+    <view class="flex1">
+      <view class="menu-title">酒单</view>
+      <view class="muted menu-sub">用库存生成并保存的配方单</view>
+    </view>
+    <text class="chevron muted">›</text>
+  </view>
+
+  <view class="menu-entry card row gap-md" bindtap="goCustoms">
+    <view class="menu-icon">特</view>
+    <view class="flex1">
+      <view class="menu-title">特调</view>
+      <view class="muted menu-sub">工作台生成的专属配方卡片</view>
+    </view>
+    <text class="chevron muted">›</text>
+  </view>
+
+  <button class="btn-danger logout" loading="{{busy}}" disabled="{{busy}}" bindtap="onLogout">
+    退出登录
+  </button>
+</view>

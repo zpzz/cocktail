@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import Svg, { Line, Polygon, Text as SvgText } from 'react-native-svg';
+import { FLAVOR_AXIS_LABELS } from '@cocktail/shared';
 import { colors } from '../theme';
-import { FLAVOR_AXIS_LABELS } from '../utils/flavorProfile';
 
 type Props = {
   /** 六维 0~1；空数组或未分析时只画网格 */

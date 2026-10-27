@@ -1,4 +1,5 @@
 import type { MenuRecipe, SavedMenuDetail, SavedMenuSummary } from '@cocktail/shared';
+import { formatShortDateTime } from '@cocktail/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -21,21 +22,6 @@ type Props = {
   visible: boolean;
   onClose: () => void;
 };
-
-function formatTime(iso?: string) {
-  if (!iso) {
-    return '';
-  }
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return iso;
-  }
-  const m = d.getMonth() + 1;
-  const day = d.getDate();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${m}月${day}日 ${hh}:${mm}`;
-}
 
 export function SavedMenusScreen({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
@@ -139,7 +125,7 @@ export function SavedMenusScreen({ visible, onClose }: Props) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowTitle}>{item.title}</Text>
                   <Text style={styles.rowMeta}>
-                    {item.recipeCount} 款配方 · {formatTime(item.createdAt)}
+                    {item.recipeCount} 款配方 · {formatShortDateTime(item.createdAt)}
                   </Text>
                 </View>
                 <Pressable
@@ -170,7 +156,7 @@ export function SavedMenusScreen({ visible, onClose }: Props) {
               <Text style={styles.title}>{detail?.title || '酒单详情'}</Text>
               {detail ? (
                 <Text style={styles.sub}>
-                  {detail.recipeCount} 款 · {formatTime(detail.createdAt)}
+                  {detail.recipeCount} 款 · {formatShortDateTime(detail.createdAt)}
                 </Text>
               ) : null}
             </View>

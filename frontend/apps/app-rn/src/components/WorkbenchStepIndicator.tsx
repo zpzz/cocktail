@@ -1,7 +1,8 @@
+import { WORKBENCH_STEPS } from '@cocktail/shared';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme';
 
-const STEPS = ['杯型', '材料', '调配'] as const;
+const STEPS = WORKBENCH_STEPS;
 
 type Props = {
   current: number;

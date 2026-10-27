@@ -1,0 +1,38 @@
+<view class="page customs">
+  <view class="header">
+    <view class="title" style="font-size: 44rpx;">特调</view>
+    <view class="muted">工作台生成的专属配方卡片</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loader">加载中…</view>
+  <view wx:elif="{{!items.length}}" class="empty">还没有特调，去工作台调制一杯吧</view>
+  <block wx:else>
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="card item row gap-md"
+      data-id="{{item.id}}"
+      bindtap="openDetail"
+    >
+      <image
+        wx:if="{{item.imageUri}}"
+        class="thumb"
+        src="{{item.imageUri}}"
+        mode="aspectFill"
+      />
+      <view wx:else class="thumb thumb-empty muted">🍷</view>
+      <view class="flex1">
+        <view class="item-title">{{item.name}}</view>
+        <view wx:if="{{item.nameEn}}" class="muted en">{{item.nameEn}}</view>
+        <view class="muted meta">{{item.meta}}</view>
+        <view wx:if="{{item.flavorSummary}}" class="muted flavor">{{item.flavorSummary}}</view>
+      </view>
+      <view
+        class="del"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
+        catchtap="confirmDelete"
+      >删除</view>
+    </view>
+  </block>
+</view>

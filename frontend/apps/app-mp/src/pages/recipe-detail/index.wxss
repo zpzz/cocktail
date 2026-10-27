@@ -1,0 +1,144 @@
+@import "../../styles/common.wxss";
+
+.detail {
+  height: 100vh;
+  background: #111111;
+}
+
+.hero {
+  width: 100%;
+  height: 520rpx;
+  background: #1b1b1f;
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+}
+
+.hero-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.body {
+  padding: 32rpx 40rpx 80rpx;
+}
+
+.title-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.name {
+  color: #f5f5f5;
+  font-size: 40rpx;
+  font-weight: 800;
+  flex: 1;
+}
+
+.name-en {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+}
+
+.summary {
+  margin-top: 16rpx;
+  color: #a0a0aa;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.stats {
+  margin-top: 28rpx;
+}
+
+.stat {
+  flex: 1;
+  padding: 20rpx;
+}
+
+.stat-label {
+  font-size: 22rpx;
+}
+
+.stat-value {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #f5f5f5;
+}
+
+.tabs {
+  margin-top: 36rpx;
+  border-bottom: 2rpx solid #303034;
+}
+
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  color: #a0a0aa;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+.tab-on {
+  color: #f34b2f;
+  border-bottom: 4rpx solid #f34b2f;
+  margin-bottom: -2rpx;
+}
+
+.panel {
+  padding-top: 28rpx;
+}
+
+.ing-row {
+  padding: 18rpx 0;
+  border-bottom: 2rpx solid #303034;
+  font-size: 28rpx;
+}
+
+.step-row {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.step-n {
+  width: 40rpx;
+  color: #f34b2f;
+  font-weight: 700;
+}
+
+.step-text {
+  flex: 1;
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: #f5f5f5;
+}
+
+.bar-row {
+  margin-bottom: 24rpx;
+}
+
+.bar-track {
+  margin-top: 10rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: #303034;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #f34b2f;
+  border-radius: 999rpx;
+}
+
+.save {
+  margin-top: 48rpx;
+}

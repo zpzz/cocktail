@@ -1,4 +1,5 @@
-import type { CustomDetail, CustomSummary, WorkbenchRecipe } from '@cocktail/shared';
+import type { CustomDetail, CustomSummary } from '@cocktail/shared';
+import { customDetailToRecipe, formatShortDateTime } from '@cocktail/shared';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -23,37 +24,6 @@ type Props = {
   visible: boolean;
   onClose: () => void;
 };
-
-function formatTime(iso?: string) {
-  if (!iso) {
-    return '';
-  }
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return iso;
-  }
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-function toRecipe(detail: CustomDetail): WorkbenchRecipe {
-  return {
-    name: detail.name,
-    nameEn: detail.nameEn,
-    glass: detail.glass,
-    method: detail.method,
-    iceType: detail.iceType,
-    garnishes: detail.garnishes,
-    feeling: detail.feeling,
-    flavorSummary: detail.flavorSummary,
-    abvRange: detail.abvRange ?? undefined,
-    difficulty: detail.difficulty ?? undefined,
-    taste: detail.taste ?? undefined,
-    flavorProfile: detail.flavorProfile ?? undefined,
-    ingredients: detail.ingredients ?? [],
-    steps: detail.steps ?? [],
-    instructions: detail.instructions,
-  };
-}
 
 export function SavedCustomsScreen({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
@@ -179,7 +149,7 @@ export function SavedCustomsScreen({ visible, onClose }: Props) {
                   <Text style={styles.cardTitle}>{item.name}</Text>
                   {item.nameEn ? <Text style={styles.en}>{item.nameEn}</Text> : null}
                   <Text style={styles.meta}>
-                    {[item.glass, item.method, formatTime(item.createdAt)]
+                    {[item.glass, item.method, formatShortDateTime(item.createdAt)]
                       .filter(Boolean)
                       .join(' · ')}
                   </Text>
@@ -220,7 +190,7 @@ export function SavedCustomsScreen({ visible, onClose }: Props) {
         ) : detail ? (
           <RecipeDetailView
             variant="saved"
-            recipe={toRecipe(detail)}
+            recipe={customDetailToRecipe(detail)}
             imageUrl={detail.imageUrl}
             saving={deleting}
             ingredientThumbs={(detail.ingredients ?? []).map((ing) => ({

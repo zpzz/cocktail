@@ -1,0 +1,73 @@
+@import "../../styles/common.wxss";
+
+.profile {
+  padding-top: 24rpx;
+}
+
+.identity {
+  margin-bottom: 56rpx;
+}
+
+.avatar {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 52rpx;
+  background: #303034;
+  border: 2rpx solid rgba(243, 75, 47, 0.33);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-text {
+  color: #f34b2f;
+  font-size: 44rpx;
+  font-weight: 700;
+}
+
+.identity-name {
+  color: #f5f5f5;
+  font-size: 34rpx;
+  font-weight: 600;
+}
+
+.flex1 {
+  flex: 1;
+}
+
+.menu-entry {
+  margin-bottom: 20rpx;
+  padding: 28rpx;
+}
+
+.menu-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 24rpx;
+  background: #111111;
+  color: #f34b2f;
+  font-size: 28rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-title {
+  color: #f5f5f5;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.menu-sub {
+  font-size: 24rpx;
+  margin-top: 4rpx;
+}
+
+.chevron {
+  font-size: 40rpx;
+}
+
+.logout {
+  margin-top: 56rpx;
+}
