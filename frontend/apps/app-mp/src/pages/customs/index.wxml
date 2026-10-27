@@ -35,4 +35,6 @@
       >删除</view>
     </view>
   </block>
+
+  <login-prompt />
 </view>

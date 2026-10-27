@@ -5,6 +5,7 @@ export type AuthState = {
   refreshToken: string | null;
   username: string | null;
   nickname: string | null;
+  avatarUrl: string | null;
   hydrated: boolean;
 };
 
@@ -13,26 +14,28 @@ const initialState: AuthState = {
   refreshToken: null,
   username: null,
   nickname: null,
+  avatarUrl: null,
   hydrated: false,
+};
+
+type AuthIdentity = {
+  accessToken: string | null;
+  refreshToken: string | null;
+  username: string | null;
+  nickname: string | null;
+  avatarUrl?: string | null;
 };
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    authHydrated(
-      state,
-      action: PayloadAction<{
-        accessToken: string | null;
-        refreshToken: string | null;
-        username: string | null;
-        nickname: string | null;
-      }>,
-    ) {
+    authHydrated(state, action: PayloadAction<AuthIdentity>) {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
       state.username = action.payload.username;
       state.nickname = action.payload.nickname;
+      state.avatarUrl = action.payload.avatarUrl ?? null;
       state.hydrated = true;
     },
     signedIn(
@@ -42,12 +45,14 @@ const authSlice = createSlice({
         refreshToken: string;
         username: string;
         nickname: string;
+        avatarUrl?: string | null;
       }>,
     ) {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
       state.username = action.payload.username;
       state.nickname = action.payload.nickname;
+      state.avatarUrl = action.payload.avatarUrl ?? null;
       state.hydrated = true;
     },
     tokensRefreshed(
@@ -65,6 +70,7 @@ const authSlice = createSlice({
       state.refreshToken = null;
       state.username = null;
       state.nickname = null;
+      state.avatarUrl = null;
       state.hydrated = true;
     },
   },

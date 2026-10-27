@@ -2,7 +2,9 @@ import type { RecipeSummary } from '@cocktail/shared';
 import { recipeMetaLine } from '@cocktail/shared';
 import { resolveMediaUrl } from '../../adapters/apiBase';
 import { recipeService } from '../../api';
-import { requireAuth } from '../../utils/nav';
+import { openLoginPrompt } from '../../auth/loginGate';
+import { hydrateAuth } from '../../auth/session';
+import { store } from '../../store';
 
 const ENTRIES = [
   { key: 'chat', title: 'AI 问答', sub: '鸡尾酒知识库', muted: false },
@@ -13,6 +15,7 @@ const ENTRIES = [
 
 Page({
   data: {
+    logoUrl: '/assets/images/jiufang-logo.png',
     recipe: null as RecipeSummary | null,
     recipeName: '暂无推荐',
     recipeMeta: '稍后再试，或点击「换一杯」',
@@ -21,12 +24,35 @@ Page({
     entries: ENTRIES,
   },
 
+  // 用页面实例字段，避免热重载后模块变量残留导致不再弹窗
+  _homeLoginSkipped: false as boolean,
+  _prompting: false as boolean,
+
   async onShow() {
-    if (!(await requireAuth())) {
-      return;
-    }
     if (!this.data.recipe) {
       void this.loadRecommend();
+    }
+    void this.maybePromptLogin();
+  },
+
+  async maybePromptLogin() {
+    if (this._prompting || this._homeLoginSkipped) {
+      return;
+    }
+    if (!store.getState().auth.hydrated) {
+      await hydrateAuth(store.dispatch);
+    }
+    if (store.getState().auth.accessToken) {
+      return;
+    }
+    this._prompting = true;
+    try {
+      const ok = await openLoginPrompt();
+      if (!ok) {
+        this._homeLoginSkipped = true;
+      }
+    } finally {
+      this._prompting = false;
     }
   },
 

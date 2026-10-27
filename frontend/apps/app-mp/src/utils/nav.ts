@@ -1,7 +1,10 @@
+import { openLoginPrompt } from '../auth/loginGate';
 import { hydrateAuth } from '../auth/session';
 import { store } from '../store';
 
-/** 确保 auth 已 hydrate；未登录则 reLaunch 登录页。返回 true 表示可继续。 */
+/**
+ * 确保已登录；无 token 时弹出全局「先登录」对话框。
+ */
 export async function requireAuth(): Promise<boolean> {
   if (!store.getState().auth.hydrated) {
     await hydrateAuth(store.dispatch);
@@ -10,9 +13,8 @@ export async function requireAuth(): Promise<boolean> {
   if (!hydrated) {
     return false;
   }
-  if (!accessToken) {
-    wx.reLaunch({ url: '/pages/auth/index' });
-    return false;
+  if (accessToken) {
+    return true;
   }
-  return true;
+  return openLoginPrompt();
 }

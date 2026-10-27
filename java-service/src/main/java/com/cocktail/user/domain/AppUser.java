@@ -10,7 +10,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 import lombok.Data;
 
-/** 登录用户。passwordHash 为 BCrypt，勿明文存储。 */
+/** 登录用户。passwordHash 为 BCrypt（微信用户可为空）；wxOpenid 为小程序 openid。 */
 @Data
 @TableName("app_user")
 public class AppUser {
@@ -23,6 +23,12 @@ public class AppUser {
     private String passwordHash;
 
     private String nickname;
+
+    /** 头像 URL（微信头像或自托管） */
+    private String avatarUrl;
+
+    /** 微信小程序 openid；账号密码用户为空 */
+    private String wxOpenid;
 
     @TableField(fill = FieldFill.INSERT)
     private Instant createdAt;

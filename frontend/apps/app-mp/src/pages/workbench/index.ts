@@ -14,7 +14,7 @@ import {
   parseWorkbenchGenerateEvent,
   WORKBENCH_STEPS,
 } from '@cocktail/shared';
-import { resolveMediaUrl } from '../../adapters/apiBase';
+import { resolveAssetUrl, resolveMediaUrl } from '../../adapters/apiBase';
 import { ingredientService, workbenchService } from '../../api';
 import { requireAuth } from '../../utils/nav';
 
@@ -37,24 +37,13 @@ function mapSessionIngredients(
   }));
 }
 
-const GLASS_CODES = [
-  'rocks',
-  'coupe',
-  'wine_goblet',
-  'highball',
-  'martini',
-  'hurricane',
-  'flute',
-  'margarita',
-  'nick_nora',
-] as const;
-
 type GlassUi = WorkbenchGlass & { icon: string };
 
-function glassIcon(code: string) {
-  return GLASS_CODES.includes(code as (typeof GLASS_CODES)[number])
-    ? `/assets/images/glasses/${code}.jpg`
-    : '/assets/images/glasses/rocks.jpg';
+function glassIcon(item: WorkbenchGlass) {
+  return (
+    resolveAssetUrl(item.imageUrl) ||
+    resolveAssetUrl(`/api/cocktail/assets/images/glasses/${item.code}.jpg`)
+  );
 }
 
 const STORAGE_KEY = 'recipeDetailPayload';
@@ -120,7 +109,7 @@ Page({
       this.applySession(s, {
         glasses: (g.items ?? []).map((item) => ({
           ...item,
-          icon: glassIcon(item.code),
+          icon: glassIcon(item),
         })),
         options: o,
         methods: o.methods ?? [],

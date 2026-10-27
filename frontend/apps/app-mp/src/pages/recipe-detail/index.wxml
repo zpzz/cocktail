@@ -78,4 +78,6 @@
       bindtap="onSave"
     >收藏特调</button>
   </view>
+
+  <login-prompt />
 </scroll-view>

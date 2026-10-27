@@ -108,4 +108,6 @@ export type {
   WorkbenchSession,
   TokenResponse,
   UserResponse,
+  WechatLoginRequest,
+  UpdateProfileRequest,
 } from './types/api';

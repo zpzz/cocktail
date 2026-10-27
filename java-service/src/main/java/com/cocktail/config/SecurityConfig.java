@@ -62,11 +62,19 @@ public class SecurityConfig {
                                 "/swagger-ui/index.html",
                                 "/swagger-auth.js"
                         ).permitAll()
-                        .requestMatchers("/api/cocktail/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/cocktail/auth/register",
+                                "/api/cocktail/auth/login",
+                                "/api/cocktail/auth/wechat",
+                                "/api/cocktail/auth/refresh",
+                                "/api/cocktail/auth/logout"
+                        ).permitAll()
                         // 材料搜索、杯型/技法枚举：未登录也能浏览目录
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/ingredients/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/recipes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/workbench/glasses", "/api/cocktail/workbench/options").permitAll()
+                        // 杯型示意 / logo / 头像等静态图：未登录也可加载
+                        .requestMatchers(HttpMethod.GET, "/api/cocktail/assets/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

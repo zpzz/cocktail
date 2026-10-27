@@ -2,9 +2,18 @@
   "description": "酒方 JIUFANG 微信小程序",
   "packOptions": {
     "ignore": [
-      { "type": "suffix", "value": ".map" },
-      { "type": "folder", "value": "node_modules" },
-      { "type": "folder", "value": "src" }
+      {
+        "value": ".map",
+        "type": "suffix"
+      },
+      {
+        "value": "node_modules",
+        "type": "folder"
+      },
+      {
+        "value": "src",
+        "type": "folder"
+      }
     ],
     "include": []
   },
@@ -52,7 +61,7 @@
   },
   "compileType": "miniprogram",
   "libVersion": "3.7.12",
-  "appid": "wx8492b713eeec3eeb",
+  "appid": "wxd74715bbe54d81fe",
   "projectname": "jiufang-mp",
   "condition": {},
   "editorSetting": {

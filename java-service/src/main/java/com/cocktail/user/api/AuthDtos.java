@@ -42,11 +42,37 @@ public final class AuthDtos {
     ) {
     }
 
+    @Schema(description = "微信小程序登录请求")
+    public record WechatLoginRequest(
+            @NotBlank
+            @Schema(description = "wx.login 返回的 code", requiredMode = Schema.RequiredMode.REQUIRED)
+            String code,
+            @Size(max = 64)
+            @Schema(description = "getUserProfile 返回的昵称")
+            String nickname,
+            @Size(max = 512)
+            @Schema(description = "getUserProfile 返回的头像 URL")
+            String avatarUrl
+    ) {
+    }
+
+    @Schema(description = "更新资料请求")
+    public record UpdateProfileRequest(
+            @Size(max = 64)
+            @Schema(description = "昵称")
+            String nickname,
+            @Size(max = 512)
+            @Schema(description = "头像 URL")
+            String avatarUrl
+    ) {
+    }
+
     @Schema(description = "用户信息")
     public record UserResponse(
             @Schema(description = "用户 ID") Long userId,
             @Schema(description = "用户名") String username,
-            @Schema(description = "昵称") String nickname
+            @Schema(description = "昵称") String nickname,
+            @Schema(description = "头像 URL") String avatarUrl
     ) {
     }
 
@@ -55,7 +81,10 @@ public final class AuthDtos {
             @Schema(description = "Access Token（JWT），也可写入 Cookie ACCESS_TOKEN") String accessToken,
             @Schema(description = "Refresh Token（随机串，存库）") String refreshToken,
             @Schema(description = "令牌类型，固定 Bearer") String tokenType,
-            @Schema(description = "Access Token 有效秒数") long expiresIn
+            @Schema(description = "Access Token 有效秒数") long expiresIn,
+            @Schema(description = "用户名（便于客户端展示）") String username,
+            @Schema(description = "昵称") String nickname,
+            @Schema(description = "头像 URL") String avatarUrl
     ) {
     }
 }

@@ -28,11 +28,15 @@ function authHeaders(options?: HttpClientOptions): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function shouldSkipRefresh(path: string): boolean {
+function shouldSkipAuthRetry(path: string): boolean {
   return (
     path.startsWith(API_PATHS.authLogin) ||
     path.startsWith(API_PATHS.authRegister) ||
-    path.startsWith(API_PATHS.authRefresh)
+    path.startsWith(API_PATHS.authWechat) ||
+    path.startsWith(API_PATHS.authRefresh) ||
+    path.startsWith(API_PATHS.authLogout) ||
+    path.startsWith(API_PATHS.authProfile) ||
+    path.startsWith(API_PATHS.authAvatar)
   );
 }
 
@@ -139,9 +143,17 @@ export function createWxHttpClient(
       data: init?.data,
     });
 
-    if (res.statusCode === 401 && !retried && !shouldSkipRefresh(path)) {
+    if (
+      (res.statusCode === 401 || res.statusCode === 403) &&
+      !retried &&
+      !shouldSkipAuthRetry(path)
+    ) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
+        return requestJson<T>(path, init, true);
+      }
+      const reauthed = await options.tryReauthenticate?.();
+      if (reauthed) {
         return requestJson<T>(path, init, true);
       }
     }
@@ -171,9 +183,17 @@ export function createWxHttpClient(
       },
     );
 
-    if (res.statusCode === 401 && !retried && !shouldSkipRefresh(path)) {
+    if (
+      (res.statusCode === 401 || res.statusCode === 403) &&
+      !retried &&
+      !shouldSkipAuthRetry(path)
+    ) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
+        return uploadMultipart<T>(path, fieldName, file, true);
+      }
+      const reauthed = await options.tryReauthenticate?.();
+      if (reauthed) {
         return uploadMultipart<T>(path, fieldName, file, true);
       }
     }
@@ -216,11 +236,21 @@ export function createWxHttpClient(
           if (settled) {
             return;
           }
-          if (statusCode === 401 && !retried && !shouldSkipRefresh(path)) {
+          if (
+            (statusCode === 401 || statusCode === 403) &&
+            !retried &&
+            !shouldSkipAuthRetry(path)
+          ) {
             settled = true;
             try {
               const refreshed = await refreshAccessToken();
               if (refreshed) {
+                await streamSse(path, body, onEvent, _streamOptions, true);
+                resolve();
+                return;
+              }
+              const reauthed = await options.tryReauthenticate?.();
+              if (reauthed) {
                 await streamSse(path, body, onEvent, _streamOptions, true);
                 resolve();
                 return;

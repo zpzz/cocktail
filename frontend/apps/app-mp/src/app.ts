@@ -1,3 +1,4 @@
+import { setupPrivacyAuthorization } from './auth/privacy';
 import { hydrateAuth } from './auth/session';
 import { store } from './store';
 
@@ -16,19 +17,8 @@ App({
   },
 
   onLaunch() {
+    setupPrivacyAuthorization();
+    // 游客可浏览公开内容；需登录的接口在 requireAuth / HTTP 401 时再走微信登录
     void hydrateAuth(store.dispatch);
-
-    store.subscribe(() => {
-      const { accessToken, hydrated } = store.getState().auth;
-      if (!hydrated || accessToken) {
-        return;
-      }
-      const pages = getCurrentPages();
-      const route = pages.length ? pages[pages.length - 1]?.route || '' : '';
-      if (route === 'pages/auth/index') {
-        return;
-      }
-      wx.reLaunch({ url: '/pages/auth/index' });
-    });
   },
 });

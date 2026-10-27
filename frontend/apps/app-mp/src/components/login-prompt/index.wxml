@@ -1,0 +1,23 @@
+<view wx:if="{{visible}}" class="login-mask" catchtouchmove="noop">
+  <view class="login-dialog" catchtap="noop">
+    <view class="login-dialog-title">登录酒方</view>
+    <view class="login-dialog-desc">登录后同步酒柜、酒单与特调；头像和昵称可在「我的」页完善。</view>
+
+    <button
+      class="btn-primary login-dialog-btn"
+      loading="{{busy}}"
+      disabled="{{busy}}"
+      bindtap="onLogin"
+    >
+      微信登录
+    </button>
+
+    <button
+      class="btn-ghost login-dialog-btn"
+      disabled="{{busy}}"
+      bindtap="onSkip"
+    >
+      暂不登录
+    </button>
+  </view>
+</view>

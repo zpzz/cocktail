@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "特调"
+  "navigationBarTitleText": "特调",
+  "usingComponents": {
+    "login-prompt": "/components/login-prompt/index"
+  }
 }

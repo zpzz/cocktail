@@ -12,6 +12,7 @@ import {
 } from '@cocktail/shared';
 import { resolveApiBaseUrl } from './adapters/apiBase';
 import { createWxHttpClient } from './adapters/http';
+import { openLoginPrompt } from './auth/loginGate';
 import { clearPersistedAuth, savePersistedAuth } from './auth/storage';
 import { store } from './store';
 
@@ -21,7 +22,7 @@ export const http = createWxHttpClient(apiBaseUrl, {
   getAccessToken: () => store.getState().auth.accessToken,
   getRefreshToken: () => store.getState().auth.refreshToken,
   onTokensRefreshed: async ({ accessToken, refreshToken }) => {
-    const { username, nickname } = store.getState().auth;
+    const { username, nickname, avatarUrl } = store.getState().auth;
     store.dispatch(tokensRefreshed({ accessToken, refreshToken }));
     if (username) {
       await savePersistedAuth({
@@ -29,6 +30,7 @@ export const http = createWxHttpClient(apiBaseUrl, {
         refreshToken,
         username,
         nickname: nickname || username,
+        avatarUrl: avatarUrl ?? null,
       });
     }
   },
@@ -36,6 +38,8 @@ export const http = createWxHttpClient(apiBaseUrl, {
     await clearPersistedAuth();
     store.dispatch(signedOut());
   },
+  // 刷新失败后弹出「先登录」对话框，成功后再重试原请求
+  tryReauthenticate: () => openLoginPrompt(),
 });
 
 export const authService = createAuthService(http);

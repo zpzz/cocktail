@@ -1,7 +1,7 @@
 <view class="home">
   <view class="header row-between">
     <view class="brand-row row gap-sm">
-      <image class="logo" src="/assets/images/jiufang-logo.png" mode="aspectFill" />
+      <image class="logo" src="{{logoUrl}}" mode="aspectFill" />
       <view>
         <view class="brand-cn">酒方</view>
         <view class="brand-en">JIUFANG</view>
@@ -55,4 +55,6 @@
       </view>
     </view>
   </view>
+
+  <login-prompt />
 </view>

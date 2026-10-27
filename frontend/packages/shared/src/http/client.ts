@@ -16,8 +16,13 @@ export type HttpClientOptions = {
     accessToken: string;
     refreshToken: string;
   }) => void | Promise<void>;
-  /** Refresh 失败：清登录态并回登录页 */
+  /** Refresh 失败：清登录态（小程序可再走微信静默登录） */
   onAuthFailure?: () => void | Promise<void>;
+  /**
+   * Access/Refresh 都无效时尝试重新登录（如小程序 wx.login）。
+   * 返回 true 表示已拿到新令牌，调用方应重试原请求。
+   */
+  tryReauthenticate?: () => Promise<boolean>;
 };
 
 export type MultipartFilePart = {

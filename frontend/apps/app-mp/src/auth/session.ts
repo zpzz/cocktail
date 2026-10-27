@@ -7,6 +7,7 @@ import {
 } from '@cocktail/shared';
 import { apiBaseUrl, authService } from '../api';
 import { store, type AppDispatch } from '../store';
+import { bumpAuthEpoch, currentHydrateEpoch, nextHydrateEpoch } from './epoch';
 import {
   clearPersistedAuth,
   loadPersistedAuth,
@@ -15,7 +16,6 @@ import {
 } from './storage';
 
 let hydrateInFlight: Promise<void> | null = null;
-let hydrateEpoch = 0;
 
 /** 避免慢请求结束后的空结果覆盖刚登录的态 */
 function safeHydrate(
@@ -25,10 +25,11 @@ function safeHydrate(
     refreshToken: string | null;
     username: string | null;
     nickname: string | null;
+    avatarUrl?: string | null;
   },
   epoch: number,
 ) {
-  if (epoch !== hydrateEpoch) {
+  if (epoch !== currentHydrateEpoch()) {
     return;
   }
   const current = store.getState().auth;
@@ -69,6 +70,7 @@ async function doHydrate(dispatch: AppDispatch, epoch: number): Promise<void> {
           refreshToken: null,
           username: null,
           nickname: null,
+          avatarUrl: null,
         },
         epoch,
       );
@@ -79,8 +81,9 @@ async function doHydrate(dispatch: AppDispatch, epoch: number): Promise<void> {
       const session: PersistedAuth = {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
-        username: saved.username,
-        nickname: saved.nickname,
+        username: tokens.username || saved.username,
+        nickname: tokens.nickname || saved.nickname,
+        avatarUrl: tokens.avatarUrl ?? saved.avatarUrl ?? null,
       };
       await savePersistedAuth(session);
       safeHydrate(dispatch, session, epoch);
@@ -99,6 +102,7 @@ async function doHydrate(dispatch: AppDispatch, epoch: number): Promise<void> {
       refreshToken: null,
       username: null,
       nickname: null,
+      avatarUrl: null,
     },
     epoch,
   );
@@ -108,17 +112,14 @@ export async function hydrateAuth(dispatch: AppDispatch) {
   if (hydrateInFlight) {
     return hydrateInFlight;
   }
-  const epoch = ++hydrateEpoch;
+  const epoch = nextHydrateEpoch();
   hydrateInFlight = doHydrate(dispatch, epoch).finally(() => {
     hydrateInFlight = null;
   });
   return hydrateInFlight;
 }
 
-/** 登录成功后作废进行中的 hydrate，防止空结果冲掉登录 */
-export function bumpAuthEpoch() {
-  hydrateEpoch += 1;
-}
+export { bumpAuthEpoch };
 
 export async function performSignOut(dispatch: AppDispatch) {
   try {

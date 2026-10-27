@@ -14,7 +14,7 @@
       <image
         wx:if="{{item.role === 'assistant'}}"
         class="avatar"
-        src="/assets/images/jiufang-logo.png"
+        src="{{logoUrl}}"
         mode="aspectFill"
       />
       <view class="bubble {{item.role === 'user' ? 'bubble-user' : 'bubble-bot'}}">
@@ -65,4 +65,6 @@
       bindtap="send"
     >{{sending ? '…' : '发送'}}</view>
   </view>
+
+  <login-prompt />
 </view>

@@ -27,9 +27,11 @@
 
 ### 1. 用户认证（P0）
 
-- 用户名 + 密码注册（BCrypt）。
+- 用户名 + 密码注册（BCrypt）；RN / 调试仍可用。
+- 微信小程序：`POST /api/cocktail/auth/wechat`（`wx.login` code → jscode2session → 按 openid 查找或自动注册），返回与密码登录相同的 JWT。
+- 配置：`WECHAT_MP_APPID` / `WECHAT_MP_SECRET`（见仓库根 `.env`）。
 - 登录发放 Access Token + Refresh Token；Access 过期后用 Refresh 静默续期。
-- 未登录不可访问酒柜、工作台保存类、对话代理等接口。
+- 未登录不可访问酒柜、工作台保存类、对话代理等接口；小程序可先浏览公开内容，再在需鉴权时静默微信登录。
 
 ### 2. 材料目录（P0，只读）
 
@@ -91,9 +93,10 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | id | BIGSERIAL PK | 主键 |
-| username | VARCHAR(64) UNIQUE NOT NULL | 登录名 |
-| password_hash | VARCHAR(255) NOT NULL | BCrypt |
+| username | VARCHAR(64) UNIQUE NOT NULL | 登录名（微信用户为 wx_ + openid 后缀） |
+| password_hash | VARCHAR(255) | BCrypt；微信登录用户可为空 |
 | nickname | VARCHAR(64) | 昵称 |
+| wx_openid | VARCHAR(64) UNIQUE | 微信小程序 openid |
 | created_at | TIMESTAMPTZ NOT NULL | 创建时间 |
 
 ### `refresh_token`

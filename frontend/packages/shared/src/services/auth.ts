@@ -5,7 +5,9 @@ import type {
   RegisterRequest,
   RefreshRequest,
   TokenResponse,
+  UpdateProfileRequest,
   UserResponse,
+  WechatLoginRequest,
 } from '../types/api';
 
 export function createAuthService(http: HttpClient) {
@@ -16,11 +18,20 @@ export function createAuthService(http: HttpClient) {
     login(payload: LoginRequest) {
       return http.post<TokenResponse>(API_PATHS.authLogin, payload);
     },
+    wechatLogin(payload: WechatLoginRequest) {
+      return http.post<TokenResponse>(API_PATHS.authWechat, payload);
+    },
     refresh(payload: RefreshRequest) {
       return http.post<TokenResponse>(API_PATHS.authRefresh, payload);
     },
     logout() {
       return http.post<null>(API_PATHS.authLogout);
+    },
+    updateProfile(payload: UpdateProfileRequest) {
+      return http.patch<UserResponse>(API_PATHS.authProfile, payload);
+    },
+    uploadAvatar(file: { uri: string; name: string; type: string }) {
+      return http.postMultipart<UserResponse>(API_PATHS.authAvatar, 'file', file);
     },
   };
 }

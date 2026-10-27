@@ -73,4 +73,6 @@
       </view>
     </block>
   </block>
+
+  <login-prompt />
 </view>

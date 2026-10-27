@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "酒单"
+  "navigationBarTitleText": "酒单",
+  "usingComponents": {
+    "login-prompt": "/components/login-prompt/index"
+  }
 }

@@ -21,12 +21,28 @@ export type TokenResponse = {
   refreshToken: string;
   tokenType: string;
   expiresIn: number;
+  /** 后端登录/刷新会带回，便于客户端展示 */
+  username?: string;
+  nickname?: string;
+  avatarUrl?: string | null;
+};
+
+export type WechatLoginRequest = {
+  code: string;
+  nickname?: string;
+  avatarUrl?: string;
+};
+
+export type UpdateProfileRequest = {
+  nickname?: string;
+  avatarUrl?: string;
 };
 
 export type UserResponse = {
   userId: number;
   username: string;
   nickname: string;
+  avatarUrl?: string | null;
 };
 
 export type RegisterRequest = {

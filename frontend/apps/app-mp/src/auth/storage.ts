@@ -5,6 +5,7 @@ export type PersistedAuth = {
   refreshToken: string;
   username: string;
   nickname: string;
+  avatarUrl?: string | null;
 };
 
 export async function loadPersistedAuth(): Promise<PersistedAuth | null> {

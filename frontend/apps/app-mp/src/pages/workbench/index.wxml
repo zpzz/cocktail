@@ -210,4 +210,6 @@
       >确认添加 ({{pickerCount}})</button>
     </view>
   </view>
+
+  <login-prompt />
 </view>

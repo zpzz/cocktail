@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "调配工作台"
+  "navigationBarTitleText": "调配工作台",
+  "usingComponents": {
+    "login-prompt": "/components/login-prompt/index"
+  }
 }

@@ -16,17 +16,23 @@ import com.cocktail.workbench.api.WorkbenchDtos.SimpleNamed;
  */
 public final class WorkbenchCatalog {
 
+    private static final String GLASS_IMAGE_PREFIX = "/api/cocktail/assets/images/glasses/";
+
     private static final List<GlassItem> GLASSES = List.of(
-            new GlassItem("martini", "马提尼杯", "Martini", 150, null),
-            new GlassItem("highball", "高球杯", "Highball", 300, null),
-            new GlassItem("rocks", "古典杯", "Rocks", 250, null),
-            new GlassItem("flute", "香槟杯", "Flute", 125, null),
-            new GlassItem("hurricane", "飓风杯", "Hurricane", 450, null),
-            new GlassItem("coupe", "碟形杯", "Coupe", 180, null),
-            new GlassItem("nick_nora", "尼克诺拉杯", "Nick & Nora", 150, null),
-            new GlassItem("wine_goblet", "葡萄酒杯", "Wine Goblet", 250, null),
-            new GlassItem("margarita", "玛格丽特杯", "Margarita", 300, null)
+            new GlassItem("martini", "马提尼杯", "Martini", 150, glassImage("martini")),
+            new GlassItem("highball", "高球杯", "Highball", 300, glassImage("highball")),
+            new GlassItem("rocks", "古典杯", "Rocks", 250, glassImage("rocks")),
+            new GlassItem("flute", "香槟杯", "Flute", 125, glassImage("flute")),
+            new GlassItem("hurricane", "飓风杯", "Hurricane", 450, glassImage("hurricane")),
+            new GlassItem("coupe", "碟形杯", "Coupe", 180, glassImage("coupe")),
+            new GlassItem("nick_nora", "尼克诺拉杯", "Nick & Nora", 150, glassImage("nick_nora")),
+            new GlassItem("wine_goblet", "葡萄酒杯", "Wine Goblet", 250, glassImage("wine_goblet")),
+            new GlassItem("margarita", "玛格丽特杯", "Margarita", 300, glassImage("margarita"))
     );
+
+    private static String glassImage(String code) {
+        return GLASS_IMAGE_PREFIX + code + ".jpg";
+    }
 
     private WorkbenchCatalog() {
     }

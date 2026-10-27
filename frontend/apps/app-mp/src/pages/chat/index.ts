@@ -7,6 +7,7 @@ import {
 } from '@cocktail/shared';
 import { resolveMediaUrl } from '../../adapters/apiBase';
 import { chatService } from '../../api';
+import { requireAuth } from '../../utils/nav';
 
 type UiMessage = ChatMessage & {
   resolvedGenUrl?: string;
@@ -34,6 +35,7 @@ const WELCOME = enrich({
 
 Page({
   data: {
+    logoUrl: '/assets/images/jiufang-logo.png',
     messages: [WELCOME] as UiMessage[],
     draft: '',
     sending: false,
@@ -62,6 +64,9 @@ Page({
   async send() {
     const message = this.data.draft.trim();
     if (!message || this.data.sending) {
+      return;
+    }
+    if (!(await requireAuth())) {
       return;
     }
     const userMessage = enrich(createChatMessage('user', message));

@@ -186,4 +186,6 @@
       </scroll-view>
     </view>
   </view>
+
+  <login-prompt />
 </view>

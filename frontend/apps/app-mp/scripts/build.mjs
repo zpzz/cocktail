@@ -59,6 +59,7 @@ function jsBuildOptions({ sourcemap, minify }) {
     entryPoints: [
       path.join(src, 'app.ts'),
       ...walk(path.join(src, 'pages'), (f) => f.endsWith('.ts')),
+      ...walk(path.join(src, 'components'), (f) => f.endsWith('.ts')),
     ],
     outdir: dist,
     outbase: src,

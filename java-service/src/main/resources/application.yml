@@ -64,6 +64,10 @@ cocktail:
     workbench-generate-path: /api/ai/workbench/generate
   workbench:
     max-ingredients: 12
+  wechat-mp:
+    app-id: ${WECHAT_MP_APPID:}
+    app-secret: ${WECHAT_MP_SECRET:}
+  avatar-dir: ${AVATAR_DIR:./data/avatars}
 
 logging:
   level:

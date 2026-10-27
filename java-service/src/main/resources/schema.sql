@@ -3,10 +3,18 @@
 CREATE TABLE IF NOT EXISTS app_user (
     id              BIGSERIAL PRIMARY KEY,
     username        VARCHAR(64)  NOT NULL UNIQUE,
-    password_hash   VARCHAR(255) NOT NULL,
+    password_hash   VARCHAR(255),
     nickname        VARCHAR(64),
+    avatar_url      VARCHAR(512),
+    wx_openid       VARCHAR(64),
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+
+-- 已有库：兼容微信登录（openid + 密码可空 + 头像）
+ALTER TABLE app_user ADD COLUMN IF NOT EXISTS wx_openid VARCHAR(64);
+ALTER TABLE app_user ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512);
+ALTER TABLE app_user ALTER COLUMN password_hash DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_app_user_wx_openid ON app_user (wx_openid);
 
 CREATE TABLE IF NOT EXISTS refresh_token (
     id              BIGSERIAL PRIMARY KEY,

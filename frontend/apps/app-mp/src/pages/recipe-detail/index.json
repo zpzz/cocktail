@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "配方详情"
+  "navigationBarTitleText": "配方详情",
+  "usingComponents": {
+    "login-prompt": "/components/login-prompt/index"
+  }
 }

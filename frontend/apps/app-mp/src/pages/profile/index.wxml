@@ -1,12 +1,46 @@
 <view class="page profile">
-  <view class="identity card row gap-md">
+  <view class="identity card row gap-md" bindtap="startEdit">
     <view class="avatar">
-      <text class="avatar-text">{{initial}}</text>
+      <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+      <text wx:else class="avatar-text">{{initial}}</text>
     </view>
     <view class="identity-body">
       <view class="identity-name">{{displayName}}</view>
-      <view wx:if="{{username}}" class="muted">@{{username}}</view>
+      <view class="muted">{{subtitle}}</view>
     </view>
+  </view>
+
+  <view wx:if="{{loggedIn && editing}}" class="edit card">
+    <view class="section-label">完善资料</view>
+    <view class="muted edit-hint">点头像可选微信头像；昵称输入时键盘上方可一键填入微信昵称。</view>
+    <button
+      class="edit-avatar-btn"
+      open-type="chooseAvatar"
+      bindchooseavatar="onChooseAvatar"
+    >
+      <image
+        wx:if="{{draftAvatar || avatarUrl}}"
+        class="edit-avatar-img"
+        src="{{draftAvatar || avatarUrl}}"
+        mode="aspectFill"
+      />
+      <text wx:else class="muted">选择微信头像</text>
+    </button>
+    <input
+      class="input"
+      type="nickname"
+      placeholder="填写微信昵称"
+      value="{{draftNickname}}"
+      bindinput="onNicknameInput"
+    />
+    <button
+      class="btn-primary"
+      loading="{{busy}}"
+      disabled="{{busy}}"
+      bindtap="saveProfile"
+    >
+      保存
+    </button>
   </view>
 
   <view class="section-label">收藏</view>
@@ -29,7 +63,25 @@
     <text class="chevron muted">›</text>
   </view>
 
-  <button class="btn-danger logout" loading="{{busy}}" disabled="{{busy}}" bindtap="onLogout">
+  <button
+    wx:if="{{!loggedIn}}"
+    class="btn-primary login"
+    loading="{{busy}}"
+    disabled="{{busy}}"
+    bindtap="onWechatLogin"
+  >
+    微信登录
+  </button>
+
+  <button
+    wx:else
+    class="btn-danger logout"
+    loading="{{busy}}"
+    disabled="{{busy}}"
+    bindtap="onLogout"
+  >
     退出登录
   </button>
+
+  <login-prompt />
 </view>

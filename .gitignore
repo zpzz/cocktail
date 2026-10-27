@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 ai-service/data/
 ai-service/models/
+java-service/data/
 
 node_modules/
 .pnpm-store/
