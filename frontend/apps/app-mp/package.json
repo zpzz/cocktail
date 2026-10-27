@@ -5,6 +5,7 @@
   "description": "酒方微信小程序（高度还原 App 功能与视觉）",
   "scripts": {
     "build": "node ./scripts/build.mjs",
+    "build:prod": "node ./scripts/build.mjs --prod",
     "dev": "node ./scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit"
   },

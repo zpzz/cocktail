@@ -9,7 +9,8 @@
     "app:android": "pnpm --filter @cocktail/app-rn android",
     "app:web": "pnpm --filter @cocktail/app-rn web",
     "mp": "node ./apps/app-mp/scripts/build.mjs --watch",
-    "mp:build": "node ./apps/app-mp/scripts/build.mjs"
+    "mp:build": "node ./apps/app-mp/scripts/build.mjs",
+    "mp:build:prod": "node ./apps/app-mp/scripts/build.mjs --prod"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]

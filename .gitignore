@@ -1,4 +1,6 @@
 .env
+frontend/apps/app-mp/deploy.env
+frontend/apps/app-mp/deploy.local.env
 .DS_Store
 .venv/
 __pycache__/

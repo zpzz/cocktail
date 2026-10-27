@@ -8,8 +8,28 @@
 2. 编译到 `dist/`：`pnpm mp`（watch）或 `pnpm mp:build`
 3. 用微信开发者工具打开目录：`frontend/apps/app-mp`（`miniprogramRoot` 为 `dist/`）
 4. 详情 → 本地设置 → **不校验合法域名**、**不校验 TLS**
-5. `src/config.ts` 里配置电脑局域网 IP（真机不能写 `127.0.0.1`）；改完需重新 build
+5. 本地默认 API 在构建脚本里（`192.168.5.206`）；可建 `deploy.local.env` 覆盖；真机不能写 `127.0.0.1`
 6. 真机与电脑同一 Wi-Fi；Windows 防火墙放行 8080 / 8000；Java / AI 服务保持运行
+
+## 打包连云服务器
+
+```bash
+cd frontend
+cp apps/app-mp/deploy.env.example apps/app-mp/deploy.env
+# 编辑 deploy.env：改成公网 IP
+# MP_API_BASE_URL=http://x.x.x.x:8080
+# MP_MEDIA_BASE_URL=http://x.x.x.x:8000
+
+pnpm mp:build:prod
+```
+
+或直接传参：
+
+```bash
+pnpm mp:build:prod -- --api=http://x.x.x.x:8080 --media=http://x.x.x.x:8000
+```
+
+构建日志会打印实际注入的 API / MEDIA 地址；用开发者工具打开 `dist/` 即可预览。
 
 ## 结构
 

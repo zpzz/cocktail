@@ -306,6 +306,12 @@ EMBEDDING_DIM=1024
 
 ```bash
 cd ai-service
+.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+若使用本地 BGE-M3（`EMBEDDING_PROVIDER=local`），启动前加上离线相关环境变量，避免再访问 Hugging Face：
+
+```bash
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_XET=1 \
   .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
