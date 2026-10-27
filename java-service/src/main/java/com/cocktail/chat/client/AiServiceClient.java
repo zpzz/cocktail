@@ -87,6 +87,25 @@ public class AiServiceClient {
         }
     }
 
+    /** 知识库配方风味补全（摘要 / 口感 / 难度 / 六维画像） */
+    public Map<String, Object> recipeEnrich(Map<String, Object> body) {
+        try {
+            Map<String, Object> response = webClient.post()
+                    .uri(ai.recipeEnrichPath())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                    })
+                    .block();
+            return response == null ? Map.of() : response;
+        } catch (WebClientResponseException ex) {
+            throw wrap(ex, "AI 风味补全失败");
+        } catch (Exception ex) {
+            throw new BusinessException("AI_UNAVAILABLE", "AI 服务不可用: " + ex.getMessage(), HttpStatus.BAD_GATEWAY);
+        }
+    }
+
     /**
      * 上传酒瓶图，Python 返回 labels；Java 再去 kb_ingredient 匹配。
      * Python 未就绪时会抛 AI_UNAVAILABLE。

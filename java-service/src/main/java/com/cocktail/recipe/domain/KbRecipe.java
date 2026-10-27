@@ -28,8 +28,21 @@ public class KbRecipe {
 
     private String method;
 
+    /** 展示用技法文案，如「Shake 摇荡」 */
+    private String methodLabel;
+
+    private String iceType;
+
+    private String garnish;
+
+    private String abvRange;
+
+    private String description;
+
     /** JSON 数组字符串，如 ["清爽","酸甜"] */
     private String flavorTags;
+
+    private String instructions;
 
     private String imageUrl;
 }

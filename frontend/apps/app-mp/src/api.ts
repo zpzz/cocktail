@@ -3,6 +3,7 @@ import {
   createCabinetService,
   createChatService,
   createCustomService,
+  createHomeService,
   createIngredientService,
   createMenuService,
   createRecipeService,
@@ -48,5 +49,6 @@ export const cabinetService = createCabinetService(http);
 export const ingredientService = createIngredientService(http);
 export const menuService = createMenuService(http);
 export const recipeService = createRecipeService(http);
+export const homeService = createHomeService(http);
 export const workbenchService = createWorkbenchService(http);
 export const customService = createCustomService(http);

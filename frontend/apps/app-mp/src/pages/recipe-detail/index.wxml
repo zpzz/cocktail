@@ -14,7 +14,7 @@
     </view>
     <view wx:if="{{nameEn}}" class="muted name-en">{{nameEn}}</view>
     <view wx:if="{{summary}}" class="summary">{{summary}}</view>
-    <view wx:if="{{generating && !recipe}}" class="summary muted">{{statusText || '正在创作特调…'}}</view>
+    <view wx:elif="{{generating}}" class="summary muted">{{statusText || '加载中…'}}</view>
 
     <view class="stats row gap-sm">
       <view class="stat card">

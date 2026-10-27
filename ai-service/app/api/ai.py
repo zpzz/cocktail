@@ -16,6 +16,7 @@ from app.config import DEEPSEEK_API_KEY, IMAGE_API_KEY
 from app.core.database import SessionLocal
 from app.ingredients.recognize import recognize_bottle_labels
 from app.rag.graph import stream_chat
+from app.recipes.enrich import enrich_recipe
 from app.workbench.analyze import analyze_session
 from app.workbench.generate import stream_generate
 
@@ -133,3 +134,14 @@ async def workbench_generate(payload: dict[str, Any]):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/recipes/enrich")
+async def recipes_enrich(payload: dict[str, Any]):
+    """知识库配方详情：补全风味摘要 / 口感 / 难度 / 六维画像（不改材料步骤）。"""
+    try:
+        return enrich_recipe(payload or {})
+    except Exception as exc:
+        logger.exception("recipe enrich failed")
+        raise HTTPException(status_code=502, detail=f"风味补全失败: {exc}") from exc
+

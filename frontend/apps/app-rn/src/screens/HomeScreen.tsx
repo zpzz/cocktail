@@ -1,4 +1,4 @@
-import type { RecipeSummary } from '@cocktail/shared';
+import type { HomeQuickEntry, RecipeSummary } from '@cocktail/shared';
 import { recipeMetaLine } from '@cocktail/shared';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -15,38 +15,47 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { resolveMediaUrl } from '../adapters/apiBase';
-import { recipeService } from '../api';
+import { resolveAssetUrl, resolveMediaUrl } from '../adapters/apiBase';
+import { homeService, recipeService } from '../api';
 import type { HomeStackParamList } from '../navigation/HomeStack';
 import type { RootTabParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme';
 
 const LOGO = require('../../assets/images/jiufang-logo.png');
 
-const QUICK_ENTRIES: {
-  key: string;
-  title: string;
-  sub: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  tab?: keyof RootTabParamList;
-  openChat?: boolean;
-}[] = [
-  { key: 'chat', title: 'AI 问答', sub: '鸡尾酒知识库', icon: 'chatbubble-ellipses-outline', openChat: true },
+const FALLBACK_ENTRIES: HomeQuickEntry[] = [
+  {
+    key: 'chat',
+    title: 'AI 问答',
+    sub: '鸡尾酒知识库',
+    iconUrl: '/api/cocktail/assets/images/home/chat.png',
+    muted: false,
+    action: 'chat',
+  },
   {
     key: 'workbench',
     title: '调配工作台',
     sub: '材料 → 配方',
-    icon: 'flask-outline',
-    tab: 'Workbench',
+    iconUrl: '/api/cocktail/assets/images/home/flask.png',
+    muted: false,
+    action: 'workbench',
   },
   {
     key: 'cabinet',
     title: '酒柜管理',
     sub: '我的酒柜',
-    icon: 'wine-outline',
-    tab: 'Cabinet',
+    iconUrl: '/api/cocktail/assets/images/home/wine.png',
+    muted: false,
+    action: 'cabinet',
   },
-  { key: 'more', title: '更多', sub: '敬请期待', icon: 'grid-outline' },
+  {
+    key: 'more',
+    title: '更多',
+    sub: '敬请期待',
+    iconUrl: '/api/cocktail/assets/images/home/grid.png',
+    muted: true,
+    action: 'none',
+  },
 ];
 
 type HomeNav = CompositeNavigationProp<
@@ -59,6 +68,7 @@ export function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
   const [recipe, setRecipe] = useState<RecipeSummary | null>(null);
   const [loadingReco, setLoadingReco] = useState(true);
+  const [entries, setEntries] = useState<HomeQuickEntry[]>(FALLBACK_ENTRIES);
 
   const loadRecommend = useCallback(async () => {
     setLoadingReco(true);
@@ -72,9 +82,21 @@ export function HomeScreen() {
     }
   }, []);
 
+  const loadEntries = useCallback(async () => {
+    try {
+      const res = await homeService.quickEntries();
+      if (res?.items?.length) {
+        setEntries(res.items);
+      }
+    } catch {
+      setEntries(FALLBACK_ENTRIES);
+    }
+  }, []);
+
   useEffect(() => {
     void loadRecommend();
-  }, [loadRecommend]);
+    void loadEntries();
+  }, [loadRecommend, loadEntries]);
 
   const imageUri = useMemo(() => resolveMediaUrl(recipe?.imageUrl), [recipe?.imageUrl]);
 
@@ -82,13 +104,17 @@ export function HomeScreen() {
     navigation.navigate('Chat');
   }
 
-  function onQuickEntry(entry: (typeof QUICK_ENTRIES)[number]) {
-    if (entry.openChat) {
+  function onQuickEntry(entry: HomeQuickEntry) {
+    if (entry.action === 'chat') {
       openChat();
       return;
     }
-    if (entry.tab) {
-      navigation.navigate(entry.tab);
+    if (entry.action === 'workbench') {
+      navigation.navigate('Workbench');
+      return;
+    }
+    if (entry.action === 'cabinet') {
+      navigation.navigate('Cabinet');
     }
   }
 
@@ -156,28 +182,36 @@ export function HomeScreen() {
 
         <View style={styles.quickGrid}>
           <View style={styles.quickRow}>
-            {QUICK_ENTRIES.slice(0, 2).map((entry) => (
+            {entries.slice(0, 2).map((entry) => (
               <Pressable
                 key={entry.key}
-                style={[styles.quickCard, entry.key === 'more' && styles.quickCardMuted]}
+                style={[styles.quickCard, entry.muted && styles.quickCardMuted]}
                 onPress={() => onQuickEntry(entry)}
-                disabled={entry.key === 'more'}
+                disabled={entry.muted || entry.action === 'none'}
               >
-                <Ionicons name={entry.icon} size={22} color={colors.primary} />
+                <Image
+                  source={{ uri: resolveAssetUrl(entry.iconUrl) }}
+                  style={styles.quickIcon}
+                  resizeMode="contain"
+                />
                 <Text style={styles.quickTitle}>{entry.title}</Text>
                 <Text style={styles.quickSub}>{entry.sub}</Text>
               </Pressable>
             ))}
           </View>
           <View style={styles.quickRow}>
-            {QUICK_ENTRIES.slice(2).map((entry) => (
+            {entries.slice(2).map((entry) => (
               <Pressable
                 key={entry.key}
-                style={[styles.quickCard, entry.key === 'more' && styles.quickCardMuted]}
+                style={[styles.quickCard, entry.muted && styles.quickCardMuted]}
                 onPress={() => onQuickEntry(entry)}
-                disabled={entry.key === 'more'}
+                disabled={entry.muted || entry.action === 'none'}
               >
-                <Ionicons name={entry.icon} size={22} color={colors.primary} />
+                <Image
+                  source={{ uri: resolveAssetUrl(entry.iconUrl) }}
+                  style={styles.quickIcon}
+                  resizeMode="contain"
+                />
                 <Text style={styles.quickTitle}>{entry.title}</Text>
                 <Text style={styles.quickSub}>{entry.sub}</Text>
               </Pressable>
@@ -416,6 +450,11 @@ const styles = StyleSheet.create({
   },
   quickCardMuted: {
     opacity: 0.55,
+  },
+  quickIcon: {
+    width: 22,
+    height: 22,
+    marginBottom: 2,
   },
   quickTitle: {
     color: colors.text,

@@ -33,7 +33,8 @@ public record CocktailProperties(
             String recognizePath,
             String cabinetMenuPath,
             String workbenchAnalyzePath,
-            String workbenchGeneratePath
+            String workbenchGeneratePath,
+            String recipeEnrichPath
     ) {
     }
 

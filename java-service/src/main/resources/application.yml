@@ -62,6 +62,7 @@ cocktail:
     cabinet-menu-path: /api/ai/cabinet/menu
     workbench-analyze-path: /api/ai/workbench/analyze
     workbench-generate-path: /api/ai/workbench/generate
+    recipe-enrich-path: /api/ai/recipes/enrich
   workbench:
     max-ingredients: 12
   wechat-mp:

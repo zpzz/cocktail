@@ -209,6 +209,36 @@ export type RecipeSummary = {
   imageUrl?: string | null;
 };
 
+/** 知识库配方详情（材料/步骤来自库） */
+export type RecipeKbDetail = {
+  id: number;
+  name: string;
+  nameEn?: string | null;
+  category?: string | null;
+  baseSpirit?: string | null;
+  glass?: string | null;
+  method?: string | null;
+  methodLabel?: string | null;
+  iceType?: string | null;
+  garnish?: string | null;
+  abvRange?: string | null;
+  description?: string | null;
+  flavorTags?: string[] | null;
+  instructions?: string | null;
+  imageUrl?: string | null;
+  ingredients: MenuIngredient[];
+  steps: WorkbenchRecipeStep[];
+};
+
+/** AI 补全的风味等展示字段 */
+export type RecipeEnrich = {
+  flavorSummary?: string | null;
+  abvRange?: string | null;
+  difficulty?: string | null;
+  taste?: string | null;
+  flavorProfile?: WorkbenchFlavorProfile | null;
+};
+
 export type MenuIngredient = {
   name: string;
   nameEn?: string;
@@ -259,6 +289,20 @@ export type SavedMenuDetail = {
   recipeCount: number;
   createdAt: string;
   recipes: MenuRecipe[];
+};
+
+export type HomeQuickEntry = {
+  key: string;
+  title: string;
+  sub: string;
+  iconUrl: string;
+  muted: boolean;
+  /** chat | workbench | cabinet | none */
+  action: string;
+};
+
+export type HomeQuickEntriesResponse = {
+  items: HomeQuickEntry[];
 };
 
 export type WorkbenchGlass = {

@@ -1,17 +1,54 @@
-import type { RecipeSummary } from '@cocktail/shared';
+import type { HomeQuickEntry, RecipeSummary } from '@cocktail/shared';
 import { recipeMetaLine } from '@cocktail/shared';
-import { resolveMediaUrl } from '../../adapters/apiBase';
-import { recipeService } from '../../api';
+import { resolveAssetUrl, resolveMediaUrl } from '../../adapters/apiBase';
+import { homeService, recipeService } from '../../api';
 import { openLoginPrompt } from '../../auth/loginGate';
 import { hydrateAuth } from '../../auth/session';
 import { store } from '../../store';
 
-const ENTRIES = [
-  { key: 'chat', title: 'AI 问答', sub: '鸡尾酒知识库', muted: false },
-  { key: 'workbench', title: '调配工作台', sub: '材料 → 配方', muted: false },
-  { key: 'cabinet', title: '酒柜管理', sub: '我的酒柜', muted: false },
-  { key: 'more', title: '更多', sub: '敬请期待', muted: true },
+const FALLBACK_ENTRIES: HomeQuickEntry[] = [
+  {
+    key: 'chat',
+    title: 'AI 问答',
+    sub: '鸡尾酒知识库',
+    iconUrl: '/api/cocktail/assets/images/home/chat.png',
+    muted: false,
+    action: 'chat',
+  },
+  {
+    key: 'workbench',
+    title: '调配工作台',
+    sub: '材料 → 配方',
+    iconUrl: '/api/cocktail/assets/images/home/flask.png',
+    muted: false,
+    action: 'workbench',
+  },
+  {
+    key: 'cabinet',
+    title: '酒柜管理',
+    sub: '我的酒柜',
+    iconUrl: '/api/cocktail/assets/images/home/wine.png',
+    muted: false,
+    action: 'cabinet',
+  },
+  {
+    key: 'more',
+    title: '更多',
+    sub: '敬请期待',
+    iconUrl: '/api/cocktail/assets/images/home/grid.png',
+    muted: true,
+    action: 'none',
+  },
 ];
+
+type EntryUi = HomeQuickEntry & { iconSrc: string };
+
+function mapEntries(items: HomeQuickEntry[]): EntryUi[] {
+  return items.map((item) => ({
+    ...item,
+    iconSrc: resolveAssetUrl(item.iconUrl),
+  }));
+}
 
 Page({
   data: {
@@ -21,18 +58,28 @@ Page({
     recipeMeta: '稍后再试，或点击「换一杯」',
     imageUri: '',
     loadingReco: true,
-    entries: ENTRIES,
+    entries: mapEntries(FALLBACK_ENTRIES),
   },
 
-  // 用页面实例字段，避免热重载后模块变量残留导致不再弹窗
   _homeLoginSkipped: false as boolean,
   _prompting: false as boolean,
 
   async onShow() {
+    void this.loadEntries();
     if (!this.data.recipe) {
       void this.loadRecommend();
     }
     void this.maybePromptLogin();
+  },
+
+  async loadEntries() {
+    try {
+      const res = await homeService.quickEntries();
+      const items = res?.items?.length ? res.items : FALLBACK_ENTRIES;
+      this.setData({ entries: mapEntries(items) });
+    } catch {
+      this.setData({ entries: mapEntries(FALLBACK_ENTRIES) });
+    }
   },
 
   async maybePromptLogin() {
@@ -84,33 +131,23 @@ Page({
 
   onQuick(e: WechatMiniprogram.TouchEvent) {
     const key = e.currentTarget.dataset.key as string;
-    if (key === 'chat') {
+    const action = (e.currentTarget.dataset.action as string) || key;
+    if (action === 'chat' || key === 'chat') {
       this.openChat();
-    } else if (key === 'workbench') {
+    } else if (action === 'workbench' || key === 'workbench') {
       wx.switchTab({ url: '/pages/workbench/index' });
-    } else if (key === 'cabinet') {
+    } else if (action === 'cabinet' || key === 'cabinet') {
       wx.switchTab({ url: '/pages/cabinet/index' });
     }
   },
 
   openRecipe() {
     const recipe = this.data.recipe;
-    if (!recipe) {
+    if (!recipe?.id) {
       return;
     }
-    const app = getApp<{ globalData: { pendingRecipe: unknown } }>();
-    app.globalData.pendingRecipe = {
-      recipe: {
-        name: recipe.name,
-        nameEn: recipe.nameEn,
-        glass: recipe.glass,
-        method: recipe.method,
-        flavorSummary: (recipe as { flavorSummary?: string }).flavorSummary,
-        imageUrl: recipe.imageUrl,
-      },
-      imageUrl: recipe.imageUrl,
-      from: 'home',
-    };
-    wx.navigateTo({ url: '/pages/recipe-detail/index?from=home' });
+    wx.navigateTo({
+      url: `/pages/recipe-detail/index?from=home&id=${recipe.id}`,
+    });
   },
 });

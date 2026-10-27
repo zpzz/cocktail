@@ -48,8 +48,10 @@
         wx:key="key"
         class="quick-card card {{item.muted ? 'quick-muted' : ''}}"
         data-key="{{item.key}}"
+        data-action="{{item.action}}"
         bindtap="onQuick"
       >
+        <image class="quick-icon" src="{{item.iconSrc}}" mode="aspectFit" />
         <view class="quick-title">{{item.title}}</view>
         <view class="quick-sub muted">{{item.sub}}</view>
       </view>

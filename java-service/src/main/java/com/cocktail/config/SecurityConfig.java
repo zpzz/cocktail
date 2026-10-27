@@ -72,7 +72,10 @@ public class SecurityConfig {
                         // 材料搜索、杯型/技法枚举：未登录也能浏览目录
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/ingredients/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/recipes/**").permitAll()
+                        // 今日推荐详情：未登录也可 AI 补全风味
+                        .requestMatchers(HttpMethod.POST, "/api/cocktail/recipes/*/enrich").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/workbench/glasses", "/api/cocktail/workbench/options").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cocktail/home/**").permitAll()
                         // 杯型示意 / logo / 头像等静态图：未登录也可加载
                         .requestMatchers(HttpMethod.GET, "/api/cocktail/assets/**").permitAll()
                         .anyRequest().authenticated()

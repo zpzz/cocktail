@@ -157,10 +157,17 @@
   width: calc(50% - 10rpx);
   min-height: 160rpx;
   padding: 28rpx;
+  box-sizing: border-box;
 }
 
 .quick-muted {
   opacity: 0.55;
+}
+
+.quick-icon {
+  width: 44rpx;
+  height: 44rpx;
+  margin-bottom: 16rpx;
 }
 
 .quick-title {

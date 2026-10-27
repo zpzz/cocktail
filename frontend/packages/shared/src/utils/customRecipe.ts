@@ -1,5 +1,7 @@
 import type {
   CustomDetail,
+  RecipeEnrich,
+  RecipeKbDetail,
   WorkbenchFlavorProfile,
   WorkbenchRecipe,
 } from '../types/api';
@@ -51,6 +53,53 @@ export function customDetailToRecipe(detail: CustomDetail): WorkbenchRecipe {
     ingredients: detail.ingredients ?? [],
     steps: detail.steps ?? [],
     instructions: detail.instructions,
+  };
+}
+
+/** 知识库配方详情 → 详情页用的 WorkbenchRecipe（可再 merge AI enrich） */
+export function kbDetailToRecipe(
+  detail: RecipeKbDetail,
+  enrich?: RecipeEnrich | null,
+): WorkbenchRecipe {
+  const garnishes = detail.garnish
+    ? detail.garnish
+        .split(/[,，、]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : undefined;
+  return {
+    name: detail.name,
+    nameEn: detail.nameEn ?? undefined,
+    glass: detail.glass ?? undefined,
+    method: detail.method ?? undefined,
+    iceType: detail.iceType ?? undefined,
+    garnishes,
+    flavorSummary: enrich?.flavorSummary || detail.description || undefined,
+    abvRange: enrich?.abvRange || detail.abvRange || undefined,
+    difficulty: enrich?.difficulty || undefined,
+    taste: enrich?.taste || detail.flavorTags?.slice(0, 2).join('') || undefined,
+    flavorProfile: enrich?.flavorProfile ?? undefined,
+    ingredients: detail.ingredients ?? [],
+    steps: detail.steps ?? [],
+    instructions: detail.instructions ?? undefined,
+  };
+}
+
+/** 把 AI enrich 合并进已有配方展示对象 */
+export function mergeRecipeEnrich(
+  recipe: WorkbenchRecipe,
+  enrich: RecipeEnrich | null | undefined,
+): WorkbenchRecipe {
+  if (!enrich) {
+    return recipe;
+  }
+  return {
+    ...recipe,
+    flavorSummary: enrich.flavorSummary || recipe.flavorSummary,
+    abvRange: enrich.abvRange || recipe.abvRange,
+    difficulty: enrich.difficulty || recipe.difficulty,
+    taste: enrich.taste || recipe.taste,
+    flavorProfile: enrich.flavorProfile ?? recipe.flavorProfile,
   };
 }
 

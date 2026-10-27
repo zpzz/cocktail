@@ -19,6 +19,7 @@ export {
   type IngredientSearchParams,
 } from './services/ingredients';
 export { createRecipeService } from './services/recipes';
+export { createHomeService } from './services/home';
 export {
   createChatService,
   createChatMessage,
@@ -49,6 +50,8 @@ export {
 export {
   buildCustomSaveBody,
   customDetailToRecipe,
+  kbDetailToRecipe,
+  mergeRecipeEnrich,
   pickRecipeProfile,
 } from './utils/customRecipe';
 export {
@@ -92,6 +95,10 @@ export type {
   MenuRecipe,
   MenuResponse,
   RecipeSummary,
+  RecipeKbDetail,
+  RecipeEnrich,
+  HomeQuickEntry,
+  HomeQuickEntriesResponse,
   RecognizeMatched,
   RecognizeResponse,
   RegisterRequest,

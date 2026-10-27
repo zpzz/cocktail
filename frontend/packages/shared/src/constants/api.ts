@@ -21,4 +21,6 @@ export const API_PATHS = {
   ingredientsCategories: `${API_PREFIX}/ingredients/categories`,
   ingredientsSearch: `${API_PREFIX}/ingredients/search`,
   recipesRandom: `${API_PREFIX}/recipes/random`,
+  recipes: `${API_PREFIX}/recipes`,
+  homeQuickEntries: `${API_PREFIX}/home/quick-entries`,
 } as const;

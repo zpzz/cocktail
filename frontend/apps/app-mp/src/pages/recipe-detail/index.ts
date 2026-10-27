@@ -6,11 +6,13 @@ import {
   customDetailToRecipe,
   FLAVOR_AXIS_LABELS,
   formatIngredientAmount,
+  kbDetailToRecipe,
+  mergeRecipeEnrich,
   methodDifficultyLabel,
   pickRecipeProfile,
 } from '@cocktail/shared';
 import { resolveMediaUrl } from '../../adapters/apiBase';
-import { customService } from '../../api';
+import { customService, recipeService } from '../../api';
 
 const STORAGE_KEY = 'recipeDetailPayload';
 
@@ -94,11 +96,13 @@ Page({
     from: '',
     sessionId: '',
     feeling: '',
+    recipeId: 0,
   },
 
   async onLoad(query: Record<string, string | undefined>) {
     const from = query.from || '';
     const customId = query.customId ? Number(query.customId) : 0;
+    const recipeId = query.id ? Number(query.id) : 0;
 
     if (customId) {
       try {
@@ -115,6 +119,11 @@ Page({
           icon: 'none',
         });
       }
+      return;
+    }
+
+    if (recipeId > 0 && (from === 'home' || !from)) {
+      await this.loadKbRecipe(recipeId, from || 'home');
       return;
     }
 
@@ -138,6 +147,49 @@ Page({
     }
   },
 
+  async loadKbRecipe(recipeId: number, from: string) {
+    this.setData({
+      recipeId,
+      from,
+      badge: '今日推荐',
+      generating: true,
+      statusText: '加载配方中…',
+      title: '配方详情',
+    });
+    try {
+      const detail = await recipeService.detail(recipeId);
+      const recipe = kbDetailToRecipe(detail);
+      this.applyPayload({
+        recipe,
+        imageUrl: detail.imageUrl,
+        from,
+        generating: true,
+        statusText: 'AI 分析风味中…',
+      });
+      try {
+        const enrich = await recipeService.enrich(recipeId);
+        const merged = mergeRecipeEnrich(recipe, enrich);
+        this.applyPayload({
+          recipe: merged,
+          imageUrl: detail.imageUrl,
+          from,
+          generating: false,
+          statusText: '',
+        });
+      } catch {
+        // 材料/步骤已展示；风味失败不阻断
+        this.setData({ generating: false, statusText: '' });
+        wx.showToast({ title: '风味分析暂不可用', icon: 'none' });
+      }
+    } catch (err) {
+      this.setData({ generating: false, statusText: '' });
+      wx.showToast({
+        title: err instanceof Error ? err.message : '加载失败',
+        icon: 'none',
+      });
+    }
+  },
+
   applyPayload(payload: Payload) {
     const ui = mapRecipeUi(payload.recipe, payload.imageUrl);
     const canSave =
@@ -152,7 +204,12 @@ Page({
       generating: Boolean(payload.generating),
       statusText: payload.statusText || '',
       canSave,
-      badge: payload.from === 'customs' ? '我的特调' : '酒方特调',
+      badge:
+        payload.from === 'customs'
+          ? '我的特调'
+          : payload.from === 'home'
+            ? '今日推荐'
+            : '酒方特调',
     });
   },
 

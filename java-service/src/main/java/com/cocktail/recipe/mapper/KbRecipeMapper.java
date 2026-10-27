@@ -1,6 +1,7 @@
 package com.cocktail.recipe.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -26,4 +27,12 @@ public interface KbRecipeMapper extends BaseMapper<KbRecipe> {
             LIMIT 1
             """)
     KbRecipe selectRandomAny();
+
+    @Select("""
+            SELECT id, name, name_en, category, base_spirit, glass, method, method_label,
+                   ice_type, garnish, abv_range, description, flavor_tags, instructions, image_url
+            FROM kb_recipe
+            WHERE id = #{id}
+            """)
+    KbRecipe selectDetailById(@Param("id") long id);
 }

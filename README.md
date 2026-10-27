@@ -254,7 +254,7 @@ cocktails/
 
 ## 启动流程
 
-需要：Docker、Python 3.12、约 3GB 磁盘给 BGE-M3。密钥只写 `.env`，不要提交。
+需要：Docker、Python 3.12、JDK 17、Maven 3.9+、约 3GB 磁盘给 BGE-M3。密钥只写 `.env`，不要提交。
 
 ### 1. 基础设施
 
@@ -304,21 +304,60 @@ EMBEDDING_DIM=1024
 
 ### 4. 启动 API
 
+macOS / Linux：
+
 ```bash
 cd ai-service
 .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+Windows（PowerShell）：
+
+```powershell
+cd d:\projects\cocktail\ai-service
+.\.venv\Scripts\activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
 若使用本地 BGE-M3（`EMBEDDING_PROVIDER=local`），启动前加上离线相关环境变量，避免再访问 Hugging Face：
 
 ```bash
+# macOS / Linux
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_XET=1 \
   .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
+```powershell
+# Windows PowerShell
+$env:HF_HUB_OFFLINE=1; $env:TRANSFORMERS_OFFLINE=1; $env:HF_HUB_DISABLE_XET=1
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
 打开 [http://127.0.0.1:8000/](http://127.0.0.1:8000/)。进程启动时会建表并确保 MinIO bucket `cocktail-images` 存在。
 
-### 5. 页面上跑通数据
+### 5. 启动 Java 业务服务
+
+APP / 小程序只请求 Java（`8080`）；对话、识图、酒单、工作台生成等再由 Java 调本机 `ai-service`（`8000`）。需已有 Postgres（步骤 1），对话类能力还需 Python 已启动（步骤 4）。需要 JDK 17、Maven 3.9+。
+
+```powershell
+cd d:\projects\cocktail\java-service
+mvn spring-boot:run
+```
+
+macOS / Linux：
+
+```bash
+cd java-service
+mvn spring-boot:run
+```
+
+- 启动时自动加载仓库根目录 `.env`（与 Python 共用 `POSTGRES_*` / `AI_SERVICE_URL` 等）
+- 健康检查：[http://127.0.0.1:8080/actuator/health](http://127.0.0.1:8080/actuator/health)
+- Swagger：[http://127.0.0.1:8080/swagger-ui.html](http://127.0.0.1:8080/swagger-ui.html)
+
+更细说明见 [`java-service/README.md`](java-service/README.md)。
+
+### 6. 页面上跑通数据
 
 1. 选 MixMyth / CocktailDB / 两个都爬 → **开始爬取**
 2. **向量化入库**（首次会加载本地 BGE-M3）
