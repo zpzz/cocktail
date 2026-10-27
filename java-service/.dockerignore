@@ -1,0 +1,8 @@
+target
+.idea
+*.iml
+.env
+.env.*
+.git
+data
+*.md

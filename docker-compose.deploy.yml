@@ -1,0 +1,112 @@
+# Linux 后端一键部署：Postgres + MinIO + ai-service + java-service
+# 用法（仓库根目录，先准备 .env）：
+#   docker compose -f docker-compose.deploy.yml up -d --build
+# 对外端口：Java 8080 / Python 8000 / MinIO 9000·9001 / Postgres 5432
+name: cocktails
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cocktails-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cocktail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cocktail}
+      POSTGRES_DB: ${POSTGRES_DB:-cocktail}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cocktail} -d ${POSTGRES_DB:-cocktail}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: cocktails-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 10s
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: cocktails-ai
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 容器内互访用服务名，覆盖 .env 里的 127.0.0.1
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-cocktail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cocktail}
+      POSTGRES_DB: ${POSTGRES_DB:-cocktail}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cocktail}:${POSTGRES_PASSWORD:-cocktail}@postgres:5432/${POSTGRES_DB:-cocktail}
+      MINIO_HOST: minio
+      MINIO_API_PORT: "9000"
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-cocktail-images}
+      MINIO_SECURE: ${MINIO_SECURE:-false}
+      # 返回给前端/小程序的图片 URL，须填公网或宿主机可达地址（见 .env 的 MINIO_PUBLIC_BASE）
+      MINIO_PUBLIC_BASE: ${MINIO_PUBLIC_BASE:-http://127.0.0.1:9000}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  java-service:
+    build:
+      context: ./java-service
+      dockerfile: Dockerfile
+    container_name: cocktails-java
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-cocktail}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cocktail}
+      POSTGRES_DB: ${POSTGRES_DB:-cocktail}
+      AI_SERVICE_URL: http://ai-service:8000
+      JWT_SECRET: ${JWT_SECRET:-cocktail-dev-secret-change-me-please-32bytes}
+      WECHAT_MP_APPID: ${WECHAT_MP_APPID:-}
+      WECHAT_MP_SECRET: ${WECHAT_MP_SECRET:-}
+      AVATAR_DIR: /app/data/avatars
+    ports:
+      - "8080:8080"
+    volumes:
+      - java_avatars:/app/data/avatars
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  minio_data:
+  java_avatars:

@@ -226,10 +226,12 @@ cocktails/
 │   ├── apps/app-rn/            Expo + React Native APP（首页 / 工作台 / 酒柜 / 我的）
 │   ├── packages/shared/        零平台依赖：类型、API 路径、HttpClient、Redux
 │   └── pnpm-workspace.yaml
-├── docker-compose.yml          Postgres(pgvector) + MinIO
+├── docker-compose.yml          本地：Postgres(pgvector) + MinIO
+├── docker-compose.deploy.yml   Linux 部署：Postgres + MinIO + ai-service + java-service
 ├── docker/postgres/init.sql    CREATE EXTENSION vector
 ├── .env.example
 ├── ai-service/
+│   ├── Dockerfile
 │   ├── app/
 │   │   ├── main.py             FastAPI 入口
 │   │   ├── config.py
@@ -240,6 +242,9 @@ cocktails/
 │   ├── models/bge-m3/          本地 embedding（不入库）
 │   ├── templates/index.html
 │   └── requirements.txt
+├── java-service/
+│   ├── Dockerfile
+│   └── ...                     Spring Boot 业务 API
 └── README.md
 ```
 
@@ -314,6 +319,93 @@ HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_DISABLE_XET=1 \
 3. 对话区提问：查库如「莫吉托用什么酒」；定制如「帮我定制一杯朗姆清爽特调」
 
 导出 Excel：`GET /api/recipes/export.xlsx`（含缩略图）。
+
+---
+
+
+
+## Linux 后端部署（Docker Compose）
+
+用 `docker-compose.deploy.yml` 一次拉起 **Postgres + MinIO + ai-service（Python）+ java-service（Java）**。本地开发仍用上面的 `docker compose up -d`（只起基础设施）。
+
+### 1. 服务器准备
+
+安装 Docker 与 Compose 插件后确认：
+
+```bash
+docker --version
+docker compose version
+```
+
+防火墙 / 安全组放行：
+
+| 端口 | 服务 |
+| ---- | ---- |
+| `8080` | Java API |
+| `8000` | Python AI / 管理页 |
+| `9000` / `9001` | MinIO API / 控制台 |
+
+`5432`（Postgres）建议仅内网访问，不要对公网开放。
+
+### 2. 拉代码并配置
+
+```bash
+git clone <仓库地址> cocktail
+cd cocktail
+cp .env.example .env
+# 编辑 .env
+```
+
+`.env` 至少修改：
+
+| 变量 | 说明 |
+| ---- | ---- |
+| `DEEPSEEK_API_KEY` / `IMAGE_API_KEY` | 对话与生图密钥 |
+| `WECHAT_MP_APPID` / `WECHAT_MP_SECRET` | 小程序登录（需要时） |
+| `JWT_SECRET` | 改成足够长的随机串 |
+| `MINIO_PUBLIC_BASE` | **必改**：`http://公网IP或域名:9000`，前端/小程序靠它拉图片 |
+| `POSTGRES_PASSWORD` / `MINIO_ROOT_*` | 生产勿用默认口令 |
+
+容器内会自动把 `POSTGRES_HOST`、`MINIO_HOST` 等覆盖为服务名（`postgres` / `minio`），无需把 `.env` 里的 `127.0.0.1` 改成服务名；**只有** `MINIO_PUBLIC_BASE` 必须填外网可达地址。
+
+### 3. 构建并启动
+
+```bash
+docker compose -f docker-compose.deploy.yml up -d --build
+```
+
+首次构建较久（`ai-service` 镜像依赖较大）。
+
+### 4. 检查
+
+```bash
+docker compose -f docker-compose.deploy.yml ps
+curl http://127.0.0.1:8080/actuator/health   # Java
+curl http://127.0.0.1:8000/docs              # Python
+```
+
+| 入口 | 地址 |
+| ---- | ---- |
+| Java API / Swagger | `http://公网IP:8080/swagger-ui.html` |
+| Python 管理页 | `http://公网IP:8000/` |
+| MinIO 控制台 | `http://公网IP:9001` |
+
+小程序 / APP 的 API 基址指向 `http://公网IP:8080`（或你的域名）。
+
+### 5. 常用运维命令
+
+```bash
+# 日志
+docker compose -f docker-compose.deploy.yml logs -f java-service
+docker compose -f docker-compose.deploy.yml logs -f ai-service
+
+# 改代码后重建某个服务
+docker compose -f docker-compose.deploy.yml up -d --build java-service
+docker compose -f docker-compose.deploy.yml up -d --build ai-service
+
+# 停止（数据卷默认保留）
+docker compose -f docker-compose.deploy.yml down
+```
 
 ---
 
