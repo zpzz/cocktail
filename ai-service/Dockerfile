@@ -1,5 +1,5 @@
-# Python AI / 爬虫 / RAG 服务
-FROM python:3.12-slim
+# 国内镜像加速：基础镜像 DaoCloud + apt/pip 阿里云
+FROM docker.m.daocloud.io/library/python:3.12-slim
 
 WORKDIR /app
 
@@ -8,19 +8,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        curl \
-        libpq5 \
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null \
+    || sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list 2>/dev/null \
+    || true \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends curl libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY requirements.docker.txt .
+RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    -r requirements.docker.txt
 
 COPY . .
 
-# 不把宿主机 .env 打进镜像；运行时由 compose 注入环境变量
 EXPOSE 8000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \

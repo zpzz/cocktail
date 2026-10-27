@@ -1,0 +1,16 @@
+# Docker 用（API 向量化）。不含 sentence-transformers / torch
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.32
+httpx==0.28.1
+SQLAlchemy==2.0.40
+Jinja2==3.1.6
+python-dotenv==1.1.0
+psycopg[binary]==3.2.9
+minio==7.2.15
+openpyxl==3.1.5
+Pillow==11.2.1
+pgvector==0.4.1
+langgraph==0.6.6
+langchain-openai==0.3.27
+langchain-core==0.3.72

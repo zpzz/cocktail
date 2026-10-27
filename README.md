@@ -382,7 +382,7 @@ docker compose up -d
 docker compose -f docker-compose.deploy.yml up -d --build
 ```
 
-首次构建较久（`ai-service` 镜像依赖较大）。若报网络 `cocktails_default` 不存在，说明第 ① 步还没起来。
+Dockerfile 已用国内镜像（DaoCloud 拉基础镜像，阿里云 apt/pip/Maven）。若报网络 `cocktails_default` 不存在，说明第 ① 步还没起来。
 
 ### 4. 检查
 
